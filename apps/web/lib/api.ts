@@ -1,61 +1,77 @@
-// apps/web/lib/api.ts — version minimale, exacte
+// @ts-nocheck
+'use client';
 
-export type AccessFlag = "public" | "prive" | "militaire" | "inconnu";
+import { useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
-export interface Site {
-  id: string;
-  name: string;
-  kind: string;
-  commune?: string;
-  dept_code?: string;
-  region?: string;
-  region_code?: string;
-  coords?: { lat: number; lon: number } | null;
-  score?: number;
-  score_reasons?: string[];
-  sources?: any[];
-  last_seen?: string;
-  access_flag?: AccessFlag;
-  risk_flags?: string[];
-}
+// Corrige les icônes par défaut sous Next
+// @ts-ignore
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
 
-export interface Paginated<T> {
-  ok: true;
-  total: number;
-  page: number;
-  pageSize: number;
-  items: T[];
-}
+// Imports sans SSR (typés en any pour neutraliser TS dans Next)
+const MapContainer: any = dynamic(
+  () => import('react-leaflet').then(m => m.MapContainer),
+  { ssr: false }
+);
+const TileLayer: any = dynamic(
+  () => import('react-leaflet').then(m => m.TileLayer),
+  { ssr: false }
+);
+const Marker: any = dynamic(
+  () => import('react-leaflet').then(m => m.Marker),
+  { ssr: false }
+);
+const Popup: any = dynamic(
+  () => import('react-leaflet').then(m => m.Popup),
+  { ssr: false }
+);
 
-export interface SiteQuery {
-  q?: string;
-  region?: string;
-  dept?: string;
-  kind?: string;
-  minScore?: number;
-  page?: number;
-  pageSize?: number;
-}
+type Feature = {
+  geometry: { type: 'Point'; coordinates: [number, number] }; // lon, lat
+  properties: { id: string; name: string; kind?: string | null; score?: number | null };
+};
+type FC = { type: 'FeatureCollection'; features: Feature[] };
 
-function resolveApiBase(): string {
-  const env = process.env.NEXT_PUBLIC_API_URL;
-  if (env && env.trim().length > 0) return env.trim();
-  if (typeof window !== "undefined") return window.location.origin;
-  return "";
-}
+export default function Map() {
+  const [data, setData] = useState<FC | null>(null);
 
-const API_BASE = resolveApiBase();
+  useEffect(() => {
+    fetch('/sites.geojson', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(setData)
+      .catch(() => setData({ type: 'FeatureCollection', features: [] }));
+  }, []);
 
-// 🔹 CE QUI COMPTE : on exporte bien getSites
-export async function getSites(params: SiteQuery): Promise<Paginated<Site>> {
-  const base = API_BASE || (typeof window !== "undefined" ? window.location.origin : "http://localhost");
-  const url = new URL("/api/sites", base);
-  Object.entries(params).forEach(([k, v]) => {
-    if (v === undefined || v === null || v === "") return;
-    url.searchParams.set(k, String(v));
-  });
+  const center = useMemo(() => [46.8, 2.5] as [number, number], []);
+  const zoom = 5;
 
-  const res = await fetch(url.toString(), { cache: "no-store" });
-  if (!res.ok) throw new Error(`API ${res.status}`);
-  return res.json();
+  return (
+    <div style={{ width: '100%', height: 420, borderRadius: 12, overflow: 'hidden', border: '1px solid #333' }}>
+      <MapContainer center={center} zoom={zoom} style={{ width: '100%', height: '100%' }}>
+        <TileLayer
+          attribution="&copy; OpenStreetMap"
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        {data?.features.map((f) => {
+          const [lon, lat] = f.geometry.coordinates;
+          return (
+            <Marker key={f.properties.id} position={[lat, lon]}>
+              <Popup>
+                <strong>{f.properties.name}</strong>
+                {f.properties.kind ? <div>Type : {f.properties.kind}</div> : null}
+                {f.properties.score ? <div>Note : {f.properties.score}</div> : null}
+              </Popup>
+            </Marker>
+          );
+        })}
+      </MapContainer>
+    </div>
+  );
 }
