@@ -1,146 +1,57 @@
-// apps/web/app/sites/page.tsx
-'use client';
+import MapSites from "@/components/Map";
+import { fetchSites } from "@/lib/api";
 
-import { useEffect, useMemo, useState } from "react";
-import { getSites, type Site, type SiteQuery } from "../../lib/api";
-import SiteCard from "../../components/SiteCard";
+export const dynamic = "force-dynamic";
 
-export default function SitesPage() {
-  const [q, setQ] = useState("");
-  const [region, setRegion] = useState("");
-  const [dept, setDept] = useState("");
-  const [kind, setKind] = useState("");
-  const [minScore, setMinScore] = useState<number | undefined>(undefined);
+export default async function SitesPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+  const q = (searchParams.q as string) ?? "";
+  const type = (searchParams.type as string) ?? "";
+  const departement = (searchParams.departement as string) ?? "";
+  const minRating = Number((searchParams.minRating as string) ?? "0");
 
-  const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
-
-  const [items, setItems] = useState<Site[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string>("");
-
-  const params: SiteQuery = useMemo(() => ({
-    q, region, dept, kind, minScore, page, pageSize
-  }), [q, region, dept, kind, minScore, page, pageSize]);
-
-  async function load() {
-    setLoading(true); setErr("");
-    try {
-      const data = await getSites(params);
-      setItems(data.items);
-      setTotal(data.total);
-    } catch (e: any) {
-      setErr(e?.message || "Erreur");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, region, dept, kind, minScore, page, pageSize]);
-
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const { items, facets } = await fetchSites({ q, type, departement, minRating, limit: 50 });
 
   return (
-    <main style={{ maxWidth: 980, margin: "0 auto", padding: 24, color: "#e5e7eb" }}>
-      <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 10 }}>Liste des sites (seed)</h1>
+    <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+      <h1 className="text-2xl font-semibold">Sites d’urbex</h1>
 
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr",
-        gap: 8,
-        background: "#111827",
-        border: "1px solid #374151",
-        borderRadius: 10,
-        padding: 12,
-        marginBottom: 12
-      }}>
-        <input
-          placeholder="Recherche (nom, commune, région, type)"
-          value={q}
-          onChange={(e) => { setPage(1); setQ(e.target.value); }}
-          style={inputStyle}
-        />
-        <input
-          placeholder="Région (ex: IDF ou 'Île-de-France')"
-          value={region}
-          onChange={(e) => { setPage(1); setRegion(e.target.value); }}
-          style={inputStyle}
-        />
-        <input
-          placeholder="Département (ex: 93)"
-          value={dept}
-          onChange={(e) => { setPage(1); setDept(e.target.value); }}
-          style={inputStyle}
-        />
-        <input
-          placeholder="Type (ex: friche, ruine, hippodrome)"
-          value={kind}
-          onChange={(e) => { setPage(1); setKind(e.target.value); }}
-          style={inputStyle}
-        />
-        <input
-          placeholder="Score min (0-5)"
-          value={minScore ?? ""}
-          onChange={(e) => {
-            const v = e.target.value;
-            setPage(1);
-            setMinScore(v === "" ? undefined : Number(v));
-          }}
-          style={inputStyle}
-        />
-      </div>
+      {/* Carte */}
+      <MapSites />
 
-      {loading && <p>Chargement…</p>}
-      {err && <p style={{ color: "#fca5a5" }}>Erreur : {err}</p>}
-      {!loading && !err && items.length === 0 && <p>Aucun résultat.</p>}
-
-      <div>
-        {items.map((s) => <SiteCard key={s.id} site={s} />)}
-      </div>
-
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12, alignItems: "center" }}>
-        <div style={{ opacity: 0.8, fontSize: 14 }}>
-          {total} résultat(s) • page {page}/{totalPages}
+      {/* Filtres */}
+      <form method="get" className="grid md:grid-cols-4 gap-3">
+        <input name="q" defaultValue={q} placeholder="Recherche..." className="bg-neutral-900 border border-neutral-700 rounded px-3 py-2" />
+        <select name="type" defaultValue={type} className="bg-neutral-900 border border-neutral-700 rounded px-3 py-2">
+          <option value="">Type (tous)</option>
+          {facets.types.map((t: string) => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <select name="departement" defaultValue={departement} className="bg-neutral-900 border border-neutral-700 rounded px-3 py-2">
+          <option value="">Département (tous)</option>
+          {facets.departements.map((d: string) => <option key={d} value={d}>{d}</option>)}
+        </select>
+        <select name="minRating" defaultValue={String(minRating)} className="bg-neutral-900 border border-neutral-700 rounded px-3 py-2">
+          <option value="0">Note mini (toutes)</option>
+          <option value="1">≥ 1</option>
+          <option value="2">≥ 2</option>
+          <option value="3">≥ 3</option>
+          <option value="4">≥ 4</option>
+          <option value="5">= 5</option>
+        </select>
+        <div className="md:col-span-4">
+          <button className="bg-indigo-600 hover:bg-indigo-500 rounded px-4 py-2">Filtrer</button>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page <= 1}
-            style={btnStyle}
-          >
-            ← Précédent
-          </button>
-          <button
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page >= totalPages}
-            style={btnStyle}
-          >
-            Suivant →
-          </button>
-        </div>
+      </form>
+
+      {/* Liste simple */}
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {items.map((s: any) => (
+          <div key={s.id} className="border border-neutral-800 rounded-lg p-3">
+            <div className="font-medium">{s.title}</div>
+            <div className="text-sm text-neutral-400">{s.type ?? "Type n/d"} · Dept {s.departement ?? "n/d"}</div>
+            {typeof s.score === "number" && <div className="text-sm mt-1">Score {s.score}</div>}
+          </div>
+        ))}
       </div>
-    </main>
+    </div>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  padding: "8px 10px",
-  borderRadius: 8,
-  border: "1px solid #374151",
-  background: "#111827",
-  color: "#e5e7eb",
-  fontSize: 14
-};
-
-const btnStyle: React.CSSProperties = {
-  padding: "8px 12px",
-  borderRadius: 8,
-  border: "1px solid #374151",
-  background: "#1f2937",
-  color: "#e5e7eb",
-  cursor: "pointer"
-};
