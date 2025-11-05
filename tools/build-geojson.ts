@@ -1,36 +1,46 @@
 // tools/build-geojson.ts
-import fs from "fs";
+import fs from "fs/promises";
 import path from "path";
 
-type Coords = { lat: number; lon: number };
-type Site = {
-  id: string; title: string; coords?: Coords; type?: string; departement?: string; score?: number;
+type SeedSite = {
+  id: string;
+  name: string;
+  coords?: { lat: number; lon: number } | null;
+  kind?: string;
+  dept_code?: string;
+  region?: string;
+  score?: number;
 };
 
-const SEED = path.resolve("data/seed/sites.json");
+const SEED_FILE = path.resolve("data/seed/sites.json");
 const OUT = path.resolve("apps/web/public/sites.geojson");
 
-function run() {
-  const raw = fs.readFileSync(SEED, "utf-8");
-  const sites: Site[] = JSON.parse(raw);
+async function main() {
+  const raw = await fs.readFile(SEED_FILE, "utf8");
+  const sites: SeedSite[] = JSON.parse(raw);
 
   const features = sites
-    .filter(s => s.coords && Number.isFinite(s.coords!.lat) && Number.isFinite(s.coords!.lon))
-    .map(s => ({
+    .filter((s) => s.coords && typeof s.coords.lat === "number" && typeof s.coords.lon === "number")
+    .map((s) => ({
       type: "Feature",
       geometry: { type: "Point", coordinates: [s.coords!.lon, s.coords!.lat] },
       properties: {
         id: s.id,
-        title: s.title,
-        type: s.type ?? null,
-        departement: s.departement ?? null,
-        score: s.score ?? null
-      }
+        name: s.name,
+        kind: s.kind ?? null,
+        dept: s.dept_code ?? null,
+        region: s.region ?? null,
+        score: s.score ?? null,
+      },
     }));
 
   const fc = { type: "FeatureCollection", features };
-  fs.writeFileSync(OUT, JSON.stringify(fc, null, 2), "utf-8");
-  console.log(`✅ GeoJSON écrit : ${OUT} (${features.length} points)`);
+  await fs.mkdir(path.dirname(OUT), { recursive: true });
+  await fs.writeFile(OUT, JSON.stringify(fc), "utf8");
+  console.log(`✅ GeoJSON écrit → ${OUT} (${features.length} points)`);
 }
 
-run();
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});
