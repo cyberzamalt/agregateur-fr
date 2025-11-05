@@ -1,36 +1,39 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
-import Parser from "rss-parser";
 
 const app = Fastify({ logger: true });
 app.register(cors, { origin: true });
 
-const parser = new Parser();
-
-// Santé
+// Ping santé
 app.get("/api/health", async () => ({ ok: true, ts: Date.now() }));
 
-// Nouveau : RSS simple
-app.get("/api/rss", async (request, reply) => {
-  const url = (request.query as any)?.url as string | undefined;
-  if (!url) return reply.code(400).send({ ok: false, error: "Paramètre ?url manquant" });
-
+// 🔗 Proxy RSS -> renvoie le XML tel quel
+app.get("/api/rss", async (req, reply) => {
   try {
-    const feed = await parser.parseURL(url);
-    const items = (feed.items || []).slice(0, 20).map((i) => ({
-      title: i.title,
-      link: i.link,
-      pubDate: (i as any).isoDate || i.pubDate || null,
-      summary: i.contentSnippet || i.content || null
-    }));
-    return { ok: true, feed: { title: feed.title || url }, items };
+    const { url } = (req.query as { url?: string }) || {};
+    if (!url) return reply.code(400).send({ error: "Missing 'url' query param" });
+
+    // Validation simple de l'URL
+    let target: URL;
+    try { target = new URL(url); } catch { return reply.code(400).send({ error: "Invalid URL" }); }
+
+    const resp = await fetch(target.toString(), {
+      headers: {
+        "user-agent": "agregateur-fr/1.0 (+https://agregateur-fr-web.onrender.com)",
+        "accept": "application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.8"
+      }
+    });
+
+    const body = await resp.text();
+    reply.header("Content-Type", resp.headers.get("content-type") || "application/xml; charset=utf-8");
+    return reply.send(body);
   } catch (e) {
-    request.log.error(e);
-    return reply.code(500).send({ ok: false, error: "Échec lecture RSS" });
+    req.log.error(e);
+    return reply.code(500).send({ error: "fetch_failed" });
   }
 });
 
-// Page racine
+// Racine
 app.get("/", async () => ({ name: "agregateur-fr API", ok: true }));
 
 const PORT = Number(process.env.PORT || 4000);
