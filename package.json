@@ -8,3 +8,15 @@
     }
   }
 }
+{
+  "scripts": {
+    "seed:ingest": "tsx tools/ingest-pdf.ts",
+    "geo:build": "tsx tools/build-geojson.ts",
+    "seed:all": "pnpm seed:ingest && pnpm geo:build"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.1",
+    "pdf-parse": "^1.1.1",
+    "@types/pdf-parse": "^1.1.4"
+  }
+}
