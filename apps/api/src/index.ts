@@ -19,5 +19,5 @@ async function start() {
     process.exit(1);
   }
 }
-
+app.get("/", async () => ({ name: "agregateur-fr API", ok: true }));
 start();
