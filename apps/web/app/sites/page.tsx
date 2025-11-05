@@ -1,6 +1,6 @@
-// apps/web/app/sites/page.tsx
-import Map from "@/components/Map";
-import { getSites } from "@/lib/api";
+// après (chemins relatifs qui marchent tout de suite)
+import Map from "../../components/Map";
+import { getSites } from "../../lib/api";
 
 export const dynamic = "force-dynamic";
 
