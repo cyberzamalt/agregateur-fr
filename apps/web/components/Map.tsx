@@ -1,4 +1,4 @@
-// @ts-nocheck
+/* @ts-nocheck */
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Corrige les icônes par défaut sous Next
+// Fix des icônes Leaflet sous Next
 // @ts-ignore
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -15,23 +15,12 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-// Imports sans SSR (typés en any pour neutraliser TS dans Next)
-const MapContainer: any = dynamic(
-  () => import('react-leaflet').then(m => m.MapContainer),
-  { ssr: false }
-);
-const TileLayer: any = dynamic(
-  () => import('react-leaflet').then(m => m.TileLayer),
-  { ssr: false }
-);
-const Marker: any = dynamic(
-  () => import('react-leaflet').then(m => m.Marker),
-  { ssr: false }
-);
-const Popup: any = dynamic(
-  () => import('react-leaflet').then(m => m.Popup),
-  { ssr: false }
-);
+// Imports client only
+const MapContainer   = dynamic(async () => (await import('react-leaflet')).MapContainer,   { ssr: false });
+const TileLayer      = dynamic(async () => (await import('react-leaflet')).TileLayer,      { ssr: false });
+const Marker         = dynamic(async () => (await import('react-leaflet')).Marker,         { ssr: false });
+const Popup          = dynamic(async () => (await import('react-leaflet')).Popup,          { ssr: false });
+const LayersControl  = dynamic(async () => (await import('react-leaflet')).LayersControl,  { ssr: false });
 
 type Feature = {
   geometry: { type: 'Point'; coordinates: [number, number] }; // lon, lat
@@ -39,26 +28,54 @@ type Feature = {
 };
 type FC = { type: 'FeatureCollection'; features: Feature[] };
 
+function Stars({ score = 0 }: { score?: number | null }) {
+  const s = Math.round(Number(score || 0));
+  return <span aria-label="note" title={`Note: ${score ?? 0}`}>{'★'.repeat(Math.max(0, s))}{'☆'.repeat(Math.max(0, 5 - s))}</span>;
+}
+
 export default function Map() {
   const [data, setData] = useState<FC | null>(null);
 
   useEffect(() => {
     fetch('/sites.geojson', { cache: 'no-store' })
-      .then(r => r.json())
+      .then((r) => r.json())
       .then(setData)
       .catch(() => setData({ type: 'FeatureCollection', features: [] }));
   }, []);
 
-  const center = useMemo(() => [46.8, 2.5] as [number, number], []);
+  const center = useMemo<[number, number]>(() => [46.8, 2.5], []);
   const zoom = 5;
 
   return (
     <div style={{ width: '100%', height: 420, borderRadius: 12, overflow: 'hidden', border: '1px solid #333' }}>
       <MapContainer center={center} zoom={zoom} style={{ width: '100%', height: '100%' }}>
-        <TileLayer
-          attribution="&copy; OpenStreetMap"
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        {/* ----- Sélecteur de fonds de carte ----- */}
+        <LayersControl position="topright">
+          <LayersControl.BaseLayer checked name="Standard (OSM)">
+            <TileLayer
+              attribution="&copy; OpenStreetMap"
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+          </LayersControl.BaseLayer>
+
+          <LayersControl.BaseLayer name="Relief (OpenTopoMap)">
+            <TileLayer
+              attribution='Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap (CC-BY-SA)'
+              url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
+              maxZoom={17}
+            />
+          </LayersControl.BaseLayer>
+
+          <LayersControl.BaseLayer name="Satellite (Esri)">
+            <TileLayer
+              attribution='Tiles &copy; Esri — Source: Esri, Earthstar Geographics'
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+              maxZoom={19}
+            />
+          </LayersControl.BaseLayer>
+        </LayersControl>
+
+        {/* ----- Marqueurs ----- */}
         {data?.features.map((f) => {
           const [lon, lat] = f.geometry.coordinates;
           return (
@@ -66,7 +83,9 @@ export default function Map() {
               <Popup>
                 <strong>{f.properties.name}</strong>
                 {f.properties.kind ? <div>Type : {f.properties.kind}</div> : null}
-                {f.properties.score ? <div>Note : {f.properties.score}</div> : null}
+                {typeof f.properties.score === 'number' ? (
+                  <div>Note : <Stars score={f.properties.score} /></div>
+                ) : null}
               </Popup>
             </Marker>
           );
