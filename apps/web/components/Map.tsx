@@ -1,52 +1,58 @@
-"use client";
+'use client';
+import { useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
-import dynamic from "next/dynamic";
-import "leaflet/dist/leaflet.css";
-import { useEffect, useState } from "react";
+// corrige les icônes par défaut sous Next
+// @ts-ignore
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'
+});
 
-const MapContainer = dynamic(
-  async () => (await import("react-leaflet")).MapContainer,
-  { ssr: false }
-);
-const TileLayer = dynamic(async () => (await import("react-leaflet")).TileLayer, { ssr: false });
-const Marker = dynamic(async () => (await import("react-leaflet")).Marker, { ssr: false });
-const Popup = dynamic(async () => (await import("react-leaflet")).Popup, { ssr: false });
+// évite l'import SSR
+const MapContainer = dynamic(async () => (await import('react-leaflet')).MapContainer, { ssr: false });
+const TileLayer = dynamic(async () => (await import('react-leaflet')).TileLayer, { ssr: false });
+const Marker = dynamic(async () => (await import('react-leaflet')).Marker, { ssr: false });
+const Popup = dynamic(async () => (await import('react-leaflet')).Popup, { ssr: false });
 
 type Feature = {
-  type: "Feature";
-  geometry: { type: "Point"; coordinates: [number, number] };
-  properties: { id: string; title: string; type?: string | null; departement?: string | null; score?: number | null };
+  geometry: { type: 'Point'; coordinates: [number, number] }; // lon, lat
+  properties: { id: string; name: string; kind?: string | null; score?: number | null };
 };
-type FC = { type: "FeatureCollection"; features: Feature[] };
+type FC = { type: 'FeatureCollection'; features: Feature[] };
 
-export default function MapSites() {
+export default function Map() {
   const [data, setData] = useState<FC | null>(null);
 
   useEffect(() => {
-    fetch("/sites.geojson").then(r => r.json()).then(setData).catch(() => setData);
+    fetch('/sites.geojson', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then(setData)
+      .catch(() => setData({ type: 'FeatureCollection', features: [] }));
   }, []);
 
-  // Paris centrée par défaut
-  const center: [number, number] = [48.8566, 2.3522];
+  const center = useMemo<[number, number]>(() => [46.8, 2.5], []);
+  const zoom = 5;
 
   return (
-    <div className="w-full h-[60vh] rounded-xl overflow-hidden border border-neutral-700">
-      <MapContainer center={center} zoom={6} style={{ height: "100%", width: "100%" }}>
+    <div style={{ width: '100%', height: 420, borderRadius: 12, overflow: 'hidden', border: '1px solid #333' }}>
+      <MapContainer center={center} zoom={zoom} style={{ width: '100%', height: '100%' }}>
         <TileLayer
           attribution='&copy; OpenStreetMap'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
         />
         {data?.features.map((f) => {
           const [lon, lat] = f.geometry.coordinates;
           return (
             <Marker key={f.properties.id} position={[lat, lon]}>
               <Popup>
-                <div className="text-sm">
-                  <div className="font-semibold">{f.properties.title}</div>
-                  {f.properties.type && <div>Type : {f.properties.type}</div>}
-                  {f.properties.departement && <div>Dept : {f.properties.departement}</div>}
-                  {typeof f.properties.score === "number" && <div>Score : {f.properties.score}</div>}
-                </div>
+                <strong>{f.properties.name}</strong>
+                {f.properties.kind ? <div>Type : {f.properties.kind}</div> : null}
+                {f.properties.score ? <div>Note : {f.properties.score}</div> : null}
               </Popup>
             </Marker>
           );
