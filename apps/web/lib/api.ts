@@ -1,77 +1,86 @@
-// @ts-nocheck
-'use client';
+// apps/web/lib/api.ts — version minimale, avec retry Render
 
-import { useEffect, useMemo, useState } from 'react';
-import dynamic from 'next/dynamic';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+export type AccessFlag = "public" | "prive" | "militaire" | "inconnu";
 
-// Corrige les icônes par défaut sous Next
-// @ts-ignore
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-});
+export interface Site {
+  id: string;
+  name: string;
+  kind: string;
+  commune?: string;
+  dept_code?: string;
+  region?: string;
+  region_code?: string;
+  coords?: { lat: number; lon: number } | null;
+  score?: number;
+  score_reasons?: string[];
+  sources?: any[];
+  last_seen?: string;
+  access_flag?: AccessFlag;
+  risk_flags?: string[];
+}
 
-// Imports sans SSR (typés en any pour neutraliser TS dans Next)
-const MapContainer: any = dynamic(
-  () => import('react-leaflet').then(m => m.MapContainer),
-  { ssr: false }
-);
-const TileLayer: any = dynamic(
-  () => import('react-leaflet').then(m => m.TileLayer),
-  { ssr: false }
-);
-const Marker: any = dynamic(
-  () => import('react-leaflet').then(m => m.Marker),
-  { ssr: false }
-);
-const Popup: any = dynamic(
-  () => import('react-leaflet').then(m => m.Popup),
-  { ssr: false }
-);
+export interface Paginated<T> {
+  ok: true;
+  total: number;
+  page: number;
+  pageSize: number;
+  items: T[];
+}
 
-type Feature = {
-  geometry: { type: 'Point'; coordinates: [number, number] }; // lon, lat
-  properties: { id: string; name: string; kind?: string | null; score?: number | null };
-};
-type FC = { type: 'FeatureCollection'; features: Feature[] };
+export interface SiteQuery {
+  q?: string;
+  region?: string;
+  dept?: string;
+  kind?: string;
+  minScore?: number;
+  page?: number;
+  pageSize?: number;
+}
 
-export default function Map() {
-  const [data, setData] = useState<FC | null>(null);
+function resolveApiBase(): string {
+  const env = process.env.NEXT_PUBLIC_API_URL;
+  if (env && env.trim().length > 0) return env.trim();
+  if (typeof window !== "undefined") return window.location.origin;
+  return "";
+}
 
-  useEffect(() => {
-    fetch('/sites.geojson', { cache: 'no-store' })
-      .then(r => r.json())
-      .then(setData)
-      .catch(() => setData({ type: 'FeatureCollection', features: [] }));
-  }, []);
+const API_BASE = resolveApiBase();
 
-  const center = useMemo(() => [46.8, 2.5] as [number, number], []);
-  const zoom = 5;
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
 
-  return (
-    <div style={{ width: '100%', height: 420, borderRadius: 12, overflow: 'hidden', border: '1px solid #333' }}>
-      <MapContainer center={center} zoom={zoom} style={{ width: '100%', height: '100%' }}>
-        <TileLayer
-          attribution="&copy; OpenStreetMap"
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        {data?.features.map((f) => {
-          const [lon, lat] = f.geometry.coordinates;
-          return (
-            <Marker key={f.properties.id} position={[lat, lon]}>
-              <Popup>
-                <strong>{f.properties.name}</strong>
-                {f.properties.kind ? <div>Type : {f.properties.kind}</div> : null}
-                {f.properties.score ? <div>Note : {f.properties.score}</div> : null}
-              </Popup>
-            </Marker>
-          );
-        })}
-      </MapContainer>
-    </div>
-  );
+// 🔹 CE QUI COMPTE : on exporte bien getSites (avec retry 429/502/503)
+export async function getSites(params: SiteQuery): Promise<Paginated<Site>> {
+  const base =
+    API_BASE || (typeof window !== "undefined" ? window.location.origin : "http://localhost");
+  const url = new URL("/api/sites", base);
+
+  Object.entries(params).forEach(([k, v]) => {
+    if (v === undefined || v === null || v === "") return;
+    url.searchParams.set(k, String(v));
+  });
+
+  const maxTries = 12; // ~24s max avec backoff
+  for (let i = 0; i < maxTries; i++) {
+    const res = await fetch(url.toString(), { cache: "no-store" });
+
+    if (res.ok) {
+      return res.json();
+    }
+
+    // Réveil Render : on attend et on retente
+    if ([429, 502, 503].includes(res.status)) {
+      await sleep(1000 + i * 1000); // 1s, 2s, 3s, ...
+      continue;
+    }
+
+    // Autre erreur : on remonte
+    throw new Error(`API ${res.status}`);
+  }
+
+  // Si l'API reste endormie trop longtemps, on renvoie une réponse vide propre
+  const page = Number(params.page ?? 1);
+  const pageSize = Number(params.pageSize ?? 20);
+  return { ok: true, total: 0, page, pageSize, items: [] };
 }
