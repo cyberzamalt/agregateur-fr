@@ -10,13 +10,13 @@
     "lint": "echo \"(lint placeholder)\""
   },
   "dependencies": {
-    "@fastify/cors": "^8.4.2",
-    "@fastify/helmet": "^12.0.0",
-    "@types/node": "^20.11.0",
-    "@types/pg": "^8.10.2",
-    "fastify": "^4.29.1",
-    "pg": "^8.11.3",
-    "typescript": "^5.4.5",
-    "zod": "^3.22.4"
+  "@fastify/cors": "^8.4.2",
+  "@fastify/helmet": "12.0.1",
+  "@types/node": "^20.11.0",
+  "@types/pg": "^8.10.2",
+  "fastify": "^4.29.1",
+  "pg": "^8.11.3",
+  "typescript": "^5.4.5",
+  "zod": "^3.22.4"
   }
 }
