@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^8.4.2",
-    "@fastify/helmet": "^13.0.2",        // <-- ici le fix de version
+    "@fastify/helmet": "^13.0.2",
     "fastify": "^4.27.2",
     "pg": "^8.11.3",
     "zod": "^3.22.4",
