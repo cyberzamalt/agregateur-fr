@@ -1,0 +1,1 @@
+'use client'; export default function RatingStars({value=0}:{value?:number}){ const s=Math.max(0,Math.min(5,Math.round((value||0)*2)/2)); const stars=Array.from({length:5}).map((_,i)=> i<Math.floor(s)?'★':'☆'); return <span>{stars.join('')}</span>; }

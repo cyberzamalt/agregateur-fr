@@ -1,0 +1,15 @@
+{
+  "name": "agregateur-fr",
+  "private": true,
+  "version": "1.0.0-rc",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:api": "pnpm --filter @apps/api dev",
+    "dev:web": "pnpm --filter @apps/web dev",
+    "build": "pnpm -r build",
+    "start:api": "pnpm --filter @apps/api start",
+    "start:web": "pnpm --filter @apps/web start"
+  }
+}

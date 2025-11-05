@@ -1,0 +1,2 @@
+import { FastifyInstance } from 'fastify';
+export default async function sitesRoutes(app: FastifyInstance){ const MOCK=[{id:'idf-1',name:'Ancienne usine A',kind:'indus',region_code:'IDF',score:3.5,geom:{type:'Point',coordinates:[2.35,48.85]}}]; app.get('/sites', async()=>MOCK); app.get('/sites/:id', async(req,reply)=>{ const {id}=req.params as any; const f=MOCK.find(x=>x.id===String(id)); if(!f) return reply.code(404).send({ok:false,error:'Not Found'}); return f; }); }

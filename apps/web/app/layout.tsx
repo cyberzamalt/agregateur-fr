@@ -1,0 +1,1 @@
+export const metadata={ title:'Agrégateur FR'}; export default function RootLayout({children}:{children:React.ReactNode}){ return (<html lang='fr'><body style={{background:'#0b0c10',color:'#eaeaea'}}><main style={{maxWidth:960,margin:'0 auto',padding:16}}>{children}</main></body></html>); }
