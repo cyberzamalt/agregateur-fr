@@ -1,136 +1,114 @@
 // tools/ingest-pdf.ts
-// But : lire tous les PDF dans data/pdfs/, extraire un maximum d'infos
-// (titre, url, coordonnées, type...), fusionner avec data/seed/sites.json
-// et produire un seed propre. "Semi-auto" = heuristiques + champs laissés vides si introuvables.
-
-import fs from "fs";
+import fs from "fs/promises";
 import path from "path";
 import pdf from "pdf-parse";
 
-type Coords = { lat: number; lon: number };
-type Site = {
-  id: string;              // slug unique
-  title: string;
-  city?: string;
-  departement?: string;    // ex: "75", "13", "59"
-  region?: string;         // ex: "Île-de-France"
-  type?: string;           // ex: "Usine", "Hôpital", "Château"...
-  rating?: number;         // 0..5
-  coords?: Coords;
-  source?: string;         // URL
-  description?: string;
-  updatedAt?: string;      // ISO date
+type AccessFlag = "public" | "prive" | "militaire" | "inconnu";
+
+type SeedSite = {
+  id: string;
+  name: string;
+  kind?: string;
+  commune?: string;
+  dept_code?: string;
+  region?: string;
+  coords?: { lat: number; lon: number } | null;
+  score?: number;
+  access_flag?: AccessFlag;
+  sources?: Array<{ type: "pdf"; ref: string }>;
 };
 
-const PDF_DIR = path.resolve("data/pdfs");
-const SEED_PATH = path.resolve("data/seed/sites.json");
+const PDFs_DIR = path.resolve("data/pdfs");
+const SEED_FILE = path.resolve("data/seed/sites.json");
 
-const ensure = (p: string) => {
-  if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
-};
+// helpers
+const slug = (s: string) =>
+  s.toLowerCase().normalize("NFKD").replace(/[^\w]+/g, "-").replace(/^-+|-+$/g, "");
 
-function slugify(s: string) {
-  return s
-    .normalize("NFD").replace(/\p{Diacritic}/gu, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
-
-function guessTitle(text: string): string | undefined {
-  // 1ère ligne non vide, courte, en "titre"
-  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-  return lines[0]?.slice(0, 120);
-}
-
-function guessUrl(text: string): string | undefined {
-  const m = text.match(/https?:\/\/[^\s)]+/i);
-  return m?.[0];
-}
-
-function guessCoords(text: string): Coords | undefined {
-  // Formats possibles: "48.8566, 2.3522" ou "lat: 48.85 lon: 2.35"
-  const m = text.match(/(-?\d{1,2}\.\d{3,})(?:\s*[;,]\s*|[^0-9-]+)(-?\d{1,3}\.\d{3,})/);
-  if (!m) return;
-  const lat = parseFloat(m[1]);
-  const lon = parseFloat(m[2]);
-  if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return;
-  return { lat, lon };
-}
-
-function guessType(text: string): string | undefined {
-  const types = ["usine", "hôpital", "hopital", "château", "chateau", "église", "eglise", "manoir", "fort", "gare", "tunnel", "bunker", "école", "ecole"];
-  const low = text.toLowerCase();
-  const found = types.find(t => low.includes(t));
-  if (!found) return;
-  const canon: Record<string, string> = {
-    "hopital": "Hôpital", "hôpital": "Hôpital",
-    "chateau": "Château", "église": "Église", "eglise": "Église",
-    "ecole": "École"
-  };
-  return canon[found] ?? (found.charAt(0).toUpperCase() + found.slice(1));
-}
-
-function loadSeed(): Site[] {
+async function readExisting(): Promise<SeedSite[]> {
   try {
-    const raw = fs.readFileSync(SEED_PATH, "utf-8");
+    const raw = await fs.readFile(SEED_FILE, "utf8");
     return JSON.parse(raw);
   } catch {
     return [];
   }
 }
 
-function saveSeed(sites: Site[]) {
-  sites.sort((a, b) => a.title.localeCompare(b.title));
-  fs.writeFileSync(SEED_PATH, JSON.stringify(sites, null, 2), "utf-8");
-  console.log(`✅ Seed écrit : ${SEED_PATH} (${sites.length} entrées)`);
+function tryParseCoords(text: string) {
+  // cherche “48.85, 2.35” ou “lat:48.85 lon:2.35”
+  const m = text.match(
+    /(?:(?:lat(?:itude)?\s*[:=]\s*)?(-?\d{1,2}\.\d+)[,\s;]+(?:lon(?:gitude)?\s*[:=]\s*)?(-?\d{1,3}\.\d+))/i
+  );
+  if (!m) return null;
+  const lat = parseFloat(m[1]), lon = parseFloat(m[2]);
+  if (isFinite(lat) && isFinite(lon)) return { lat, lon };
+  return null;
 }
 
-async function run() {
-  ensure("data/seed");
-  ensure(PDF_DIR);
+function pick<T>(v: T | undefined, fallback: T): T {
+  return v === undefined ? fallback : v;
+}
 
-  const seed = loadSeed();
-  const byId = new Map(seed.map(s => [s.id, s]));
+function parseOne(text: string, file: string): Partial<SeedSite> {
+  // Heuristiques simples (adaptables à tes PDFs)
+  const name =
+    text.match(/(?:Nom|Titre)\s*[:\-]\s*(.+)/i)?.[1]?.trim() ??
+    path.basename(file, path.extname(file));
+  const kind = text.match(/(?:Type|Catégorie)\s*[:\-]\s*(.+)/i)?.[1]?.trim();
+  const commune = text.match(/(?:Commune|Ville)\s*[:\-]\s*(.+)/i)?.[1]?.trim();
+  const dept = text.match(/(?:Département|Dept\.?)\s*[:\-]\s*(\d{2,3})/i)?.[1]?.trim();
+  const region = text.match(/Région\s*[:\-]\s*(.+)/i)?.[1]?.trim();
+  const coords = tryParseCoords(text);
 
-  const files = fs.readdirSync(PDF_DIR).filter(f => f.toLowerCase().endsWith(".pdf"));
-  if (files.length === 0) {
-    console.log(`ℹ️ Place tes PDF dans ${PDF_DIR} puis relance : pnpm seed:ingest`);
-    saveSeed(seed);
-    return;
-  }
+  return {
+    name,
+    kind,
+    commune,
+    dept_code: dept,
+    region,
+    coords,
+  };
+}
 
-  for (const file of files) {
-    const p = path.join(PDF_DIR, file);
-    const buff = fs.readFileSync(p);
-    const data = await pdf(buff);
-    const text = data.text ?? "";
+async function main() {
+  const existing = await readExisting();
+  const byId = new Map(existing.map((s) => [s.id, s]));
 
-    const title = guessTitle(text) ?? path.parse(file).name;
-    const id = slugify(title);
+  const entries = await fs.readdir(PDFs_DIR, { withFileTypes: true });
+  const pdfs = entries.filter((e) => e.isFile() && /\.pdf$/i.test(e.name));
 
-    const prev = byId.get(id);
-    const site: Site = prev ?? {
+  for (const e of pdfs) {
+    const file = path.join(PDFs_DIR, e.name);
+    const buf = await fs.readFile(file);
+    const data = await pdf(buf);
+    const parsed = parseOne(data.text, e.name);
+
+    const id = `pdf-${slug(path.basename(e.name, ".pdf"))}`;
+    const current = byId.get(id);
+
+    const merged: SeedSite = {
       id,
-      title,
-      updatedAt: new Date().toISOString()
+      name: pick(parsed.name, current?.name ?? id),
+      kind: parsed.kind ?? current?.kind,
+      commune: parsed.commune ?? current?.commune,
+      dept_code: parsed.dept_code ?? current?.dept_code,
+      region: parsed.region ?? current?.region,
+      coords: parsed.coords ?? current?.coords ?? null,
+      score: current?.score,
+      access_flag: current?.access_flag ?? "inconnu",
+      sources: current?.sources ?? [{ type: "pdf", ref: e.name }],
     };
 
-    site.title = site.title || title;
-    site.source = site.source ?? guessUrl(text);
-    site.coords = site.coords ?? guessCoords(text);
-    site.type = site.type ?? guessType(text);
-
-    // On garde le texte source pour enrichir plus tard si tu veux
-    site.description = site.description ?? undefined;
-
-    byId.set(id, site);
+    byId.set(id, merged);
   }
 
-  saveSeed([...byId.values()]);
+  const out = Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name));
+  await fs.mkdir(path.dirname(SEED_FILE), { recursive: true });
+  await fs.writeFile(SEED_FILE, JSON.stringify(out, null, 2), "utf8");
+  console.log(`✅ Seed mis à jour → ${SEED_FILE} (${out.length} entrées)`);
 }
 
-run().catch(err => {
-  console.error(err);
+main().catch((e) => {
+  console.error(e);
   process.exit(1);
 });
