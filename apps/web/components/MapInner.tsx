@@ -1,5 +1,6 @@
-'use client';
 // @ts-nocheck
+'use client';
+
 import { useEffect, useMemo, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
@@ -30,7 +31,7 @@ export default function MapInner() {
       .catch(() => setData({ type: 'FeatureCollection', features: [] }));
   }, []);
 
-  const center = useMemo<[number, number]>(() => [46.8, 2.5], []);
+  const center: [number, number] = useMemo(() => [46.8, 2.5], []);
   const zoom = 5;
 
   return (
