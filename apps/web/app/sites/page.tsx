@@ -1,57 +1,46 @@
-import MapSites from "@/components/Map";
-import { fetchSites } from "@/lib/api";
+// apps/web/app/sites/page.tsx
+import Map from "@/components/Map";
+import { getSites } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
-export default async function SitesPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
-  const q = (searchParams.q as string) ?? "";
-  const type = (searchParams.type as string) ?? "";
-  const departement = (searchParams.departement as string) ?? "";
-  const minRating = Number((searchParams.minRating as string) ?? "0");
+export default async function SitesPage({
+  searchParams,
+}: {
+  searchParams?: { q?: string; region?: string; dept?: string; kind?: string; minScore?: string; page?: string };
+}) {
+  const page = Number(searchParams?.page ?? 1);
+  const pageSize = 20;
 
-  const { items, facets } = await fetchSites({ q, type, departement, minRating, limit: 50 });
+  const data = await getSites({
+    q: searchParams?.q,
+    region: searchParams?.region,
+    dept: searchParams?.dept,
+    kind: searchParams?.kind,
+    minScore: searchParams?.minScore ? Number(searchParams.minScore) : undefined,
+    page,
+    pageSize,
+  });
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
-      <h1 className="text-2xl font-semibold">Sites d’urbex</h1>
+    <main className="mx-auto max-w-5xl p-6 space-y-6">
+      <h1 className="text-2xl font-semibold">Sites d&apos;Urbex</h1>
 
       {/* Carte */}
-      <MapSites />
+      <Map />
 
-      {/* Filtres */}
-      <form method="get" className="grid md:grid-cols-4 gap-3">
-        <input name="q" defaultValue={q} placeholder="Recherche..." className="bg-neutral-900 border border-neutral-700 rounded px-3 py-2" />
-        <select name="type" defaultValue={type} className="bg-neutral-900 border border-neutral-700 rounded px-3 py-2">
-          <option value="">Type (tous)</option>
-          {facets.types.map((t: string) => <option key={t} value={t}>{t}</option>)}
-        </select>
-        <select name="departement" defaultValue={departement} className="bg-neutral-900 border border-neutral-700 rounded px-3 py-2">
-          <option value="">Département (tous)</option>
-          {facets.departements.map((d: string) => <option key={d} value={d}>{d}</option>)}
-        </select>
-        <select name="minRating" defaultValue={String(minRating)} className="bg-neutral-900 border border-neutral-700 rounded px-3 py-2">
-          <option value="0">Note mini (toutes)</option>
-          <option value="1">≥ 1</option>
-          <option value="2">≥ 2</option>
-          <option value="3">≥ 3</option>
-          <option value="4">≥ 4</option>
-          <option value="5">= 5</option>
-        </select>
-        <div className="md:col-span-4">
-          <button className="bg-indigo-600 hover:bg-indigo-500 rounded px-4 py-2">Filtrer</button>
-        </div>
-      </form>
-
-      {/* Liste simple */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {items.map((s: any) => (
-          <div key={s.id} className="border border-neutral-800 rounded-lg p-3">
-            <div className="font-medium">{s.title}</div>
-            <div className="text-sm text-neutral-400">{s.type ?? "Type n/d"} · Dept {s.departement ?? "n/d"}</div>
-            {typeof s.score === "number" && <div className="text-sm mt-1">Score {s.score}</div>}
-          </div>
+      {/* Compteur + simple liste */}
+      <div className="text-sm opacity-80">Résultats : {data.total}</div>
+      <ul className="grid grid-cols-1 gap-3">
+        {data.items.map((s) => (
+          <li key={s.id} className="border border-zinc-700 rounded-lg p-3">
+            <div className="font-medium">{s.name}</div>
+            <div className="text-xs opacity-75">
+              {s.kind ?? "—"} {s.region ? `· ${s.region}` : ""} {s.dept_code ? `· ${s.dept_code}` : ""}
+            </div>
+          </li>
         ))}
-      </div>
-    </div>
+      </ul>
+    </main>
   );
 }
