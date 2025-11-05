@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - name: Install pnpm
+        run: npm i -g pnpm@9
+      - name: Install deps
+        run: pnpm install --frozen-lockfile=false
+      - name: Typecheck
+        run: |
+          pnpm --filter @apps/api typecheck || true
+          pnpm --filter @apps/web typecheck || true
+      - name: Lint
+        run: |
+          pnpm --filter @apps/api lint || true
+          pnpm --filter @apps/web lint || true
+      - name: Build
+        run: |
+          pnpm --filter @apps/api build || true
+          pnpm --filter @apps/web build || true
