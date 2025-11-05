@@ -1,0 +1,46 @@
+name: Build seed & geojson from PDFs
+
+on:
+  push:
+    paths:
+      - "data/pdfs/**"
+      - "tools/**"
+      - "package.json"
+      - "pnpm-workspace.yaml"
+  workflow_dispatch:
+
+jobs:
+  build-seed:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - name: Install deps (root)
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Run seed ingest (PDF -> data/seed/sites.json)
+        run: pnpm seed:ingest
+
+      - name: Build GeoJSON (-> apps/web/public/sites.geojson)
+        run: pnpm geo:build
+
+      - name: Commit & push generated files
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -m "chore(seed): update from PDFs [skip ci]" || echo "No changes to commit"
+          git push
