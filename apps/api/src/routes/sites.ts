@@ -1,75 +1,53 @@
-import type { FastifyPluginAsync } from "fastify";
+// apps/api/src/routes/sites.ts
+import { FastifyInstance } from "fastify";
 import fs from "fs";
 import path from "path";
-import type { Site, SiteQuery, Paginated } from "../types";
+import type { Site } from "../types";
+import { computeScore } from "../lib/scoring";
 
-function resolveSeedPath(): string {
-  // 1) si on est lancé depuis apps/api -> remonter vers /data/seed/sites.json
-  const p1 = path.resolve(process.cwd(), "..", "..", "data", "seed", "sites.json");
-  if (fs.existsSync(p1)) return p1;
-  // 2) fallback depuis dist/routes -> remonter 4 niveaux vers /data/seed/sites.json
-  const p2 = path.resolve(__dirname, "..", "..", "..", "..", "data", "seed", "sites.json");
-  return p2;
-}
-
-let CACHE: Site[] | null = null;
-function loadSeed(): Site[] {
-  if (CACHE) return CACHE;
-  const seedPath = resolveSeedPath();
-  const raw = fs.readFileSync(seedPath, "utf-8");
-  CACHE = JSON.parse(raw) as Site[];
-  return CACHE!;
-}
-
-function matches(site: Site, q?: string): boolean {
-  if (!q) return true;
-  const s = q.toLowerCase();
-  return (
-    (site.name && site.name.toLowerCase().includes(s)) ||
-    (site.commune && site.commune.toLowerCase().includes(s)) ||
-    (site.region && site.region.toLowerCase().includes(s)) ||
-    (site.kind && site.kind.toLowerCase().includes(s))
-  );
-}
-
-const plugin: FastifyPluginAsync = async (app) => {
-  app.get("/sites", async (req, reply) => {
-    const seed = loadSeed();
-    const { q, region, dept, kind, minScore, page = 1, pageSize = 20 } = (req.query || {}) as SiteQuery;
-
-    let list = seed.slice();
-
-    if (q) list = list.filter((s) => matches(s, q));
-    if (region) {
-      const r = region.toLowerCase();
-      list = list.filter(
-        (s) =>
-          (s.region && s.region.toLowerCase().includes(r)) ||
-          (s.region_code && s.region_code.toLowerCase() === r)
-      );
-    }
-    if (dept) {
-      const d = dept.toLowerCase();
-      list = list.filter((s) => (s.dept_code || "").toLowerCase() === d);
-    }
-    if (kind) {
-      const k = kind.toLowerCase();
-      list = list.filter((s) => (s.kind || "").toLowerCase().includes(k));
-    }
-    if (typeof minScore !== "undefined") {
-      const m = Number(minScore);
-      if (!Number.isNaN(m)) list = list.filter((s) => (s.score ?? 0) >= m);
-    }
-
-    const total = list.length;
-    const p = Math.max(1, Number(page) || 1);
-    const ps = Math.min(100, Math.max(1, Number(pageSize) || 20));
-    const start = (p - 1) * ps;
-    const items = list.slice(start, start + ps);
-
-    const res: Paginated<Site> = { ok: true, total, page: p, pageSize: ps, items };
-    return reply.send(res);
-  });
+type Query = {
+  q?: string;
+  type?: string;
+  departement?: string;     // "75", "13", ...
+  minRating?: string;       // "3" => >=3
+  limit?: string;           // "20"
+  offset?: string;          // "0"
 };
 
-export default plugin;
+export async function sitesRoutes(app: FastifyInstance) {
+  app.get<{ Querystring: Query }>("/api/sites", async (req) => {
+    const q = (req.query.q ?? "").toLowerCase().trim();
+    const type = (req.query.type ?? "").toLowerCase().trim();
+    const dep = (req.query.departement ?? "").trim();
+    const minRating = Number(req.query.minRating ?? 0);
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit ?? 50)));
+    const offset = Math.max(0, Number(req.query.offset ?? 0));
+
+    const seedPath = path.resolve("data/seed/sites.json");
+    const raw = fs.readFileSync(seedPath, "utf-8");
+    const all: Site[] = JSON.parse(raw);
+
+    const enriched = all.map(s => ({ ...s, score: computeScore(s) }));
+
+    const filtered = enriched.filter(s => {
+      if (q) {
+        const hay = [s.title, s.city, s.type, s.departement, s.region, s.source]
+          .filter(Boolean).join(" ").toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      if (type && (s.type ?? "").toLowerCase() !== type) return false;
+      if (dep && (s.departement ?? "") !== dep) return false;
+      if (minRating && (s.rating ?? 0) < minRating) return false;
+      return true;
+    });
+
+    const total = filtered.length;
+    const page = filtered.slice(offset, offset + limit);
+
+    // Suggestion: renvoyer aussi la liste des types/départements disponibles (facilite les filtres côté front)
+    const types = Array.from(new Set(all.map(s => s.type).filter(Boolean))).sort();
+    const deps = Array.from(new Set(all.map(s => s.departement).filter(Boolean))).sort();
+
+    return { total, items: page, facets: { types, departements: deps } };
+  });
+}
