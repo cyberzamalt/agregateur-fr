@@ -1,83 +1,90 @@
 'use client';
 
-import dynamic from 'next/dynamic';
-import { useMemo } from 'react';
+import { useEffect, useState } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, LayersControl } from 'react-leaflet';
+import type { LatLngTuple } from 'leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Corrige les icônes Leaflet sous Next
-// @ts-ignore
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
+type Feature = {
+  type: 'Feature';
+  properties: {
+    id: string;
+    name: string;
+    kind?: string;
+    region?: string;
+    dept_code?: string;
+    score?: number;
+  };
+  geometry: { type: 'Point'; coordinates: [number, number] }; // [lon, lat]
+};
+
+type FeatureCollection = { type: 'FeatureCollection'; features: Feature[] };
+
+const defaultCenter: LatLngTuple = [46.5, 2.5];
+
+const icon = new L.Icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -28],
+  shadowSize: [41, 41],
 });
 
-// Import dynamique (pas de SSR) + cast en any pour éviter les erreurs de types
-const MapContainer = dynamic(() => import('react-leaflet').then(m => m.MapContainer), { ssr: false }) as any;
-const TileLayer     = dynamic(() => import('react-leaflet').then(m => m.TileLayer),     { ssr: false }) as any;
-const Marker        = dynamic(() => import('react-leaflet').then(m => m.Marker),        { ssr: false }) as any;
-const Popup         = dynamic(() => import('react-leaflet').then(m => m.Popup),         { ssr: false }) as any;
-const LayersControl = dynamic(() => import('react-leaflet').then(m => m.LayersControl), { ssr: false }) as any;
+export default function ClientMap() {
+  const [features, setFeatures] = useState<Feature[]>([]);
 
-export type SiteFeature = {
-  geometry: { type: 'Point'; coordinates: [number, number] }; // [lon, lat]
-  properties: { id: string; name: string; kind?: string | null; score?: number | null; region?: string | null };
-};
-
-type Props = {
-  features: SiteFeature[];
-  center?: [number, number];
-  zoom?: number;
-};
-
-export default function Map({ features, center = [46.5, 2.5], zoom = 6 }: Props) {
-  const points = useMemo(() => features ?? [], [features]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch('/sites.geojson', { cache: 'no-store' });
+        const data: FeatureCollection = await r.json();
+        if (!cancelled) setFeatures(Array.isArray(data?.features) ? data.features : []);
+      } catch {
+        if (!cancelled) setFeatures([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <div style={{ width: '100%', maxWidth: 900, margin: '0 auto' }}>
       <div style={{ width: '100%', height: 420, borderRadius: 12, overflow: 'hidden', border: '1px solid #333' }}>
-        <MapContainer center={center} zoom={zoom} style={{ width: '100%', height: '100%' }}>
+        <MapContainer center={defaultCenter} zoom={6} style={{ width: '100%', height: '100%' }}>
           <LayersControl position="topright">
             <LayersControl.BaseLayer checked name="Standard (OSM)">
-              <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution="&copy; OpenStreetMap contributors"
-              />
+              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             </LayersControl.BaseLayer>
-
-            <LayersControl.BaseLayer name="Satellite (Esri)">
-              <TileLayer
-                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                attribution="Tiles &copy; Esri"
-              />
+            <LayersControl.BaseLayer name="Relief (Topo)">
+              <TileLayer url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png" />
             </LayersControl.BaseLayer>
-
-            <LayersControl.BaseLayer name="Relief (Stamen Terrain)">
-              <TileLayer
-                url="https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.jpg"
-                attribution="Map tiles by Stamen Design"
-              />
+            <LayersControl.BaseLayer name="Satellite (ESRI)">
+              <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" />
             </LayersControl.BaseLayer>
           </LayersControl>
 
-          {points.map((f) => {
-            const [lon, lat] = f.geometry.coordinates || [];
+          {features.map((f) => {
+            const [lon, lat] = f.geometry?.coordinates ?? [];
             if (typeof lat !== 'number' || typeof lon !== 'number') return null;
+            const pos: LatLngTuple = [lat, lon]; // Leaflet attend [lat, lon]
             return (
-              <Marker key={f.properties.id} position={[lat, lon]}>
+              <Marker key={f.properties.id} position={pos} icon={icon}>
                 <Popup>
-                  <strong>{f.properties.name}</strong>
-                  {f.properties.kind ? <div>Type : {f.properties.kind}</div> : null}
-                  {typeof f.properties.score === 'number' ? <div>Note : {f.properties.score}</div> : null}
-                  {f.properties.region ? <div>Région : {f.properties.region}</div> : null}
+                  <div>
+                    <strong>{f.properties.name}</strong>
+                    {f.properties.kind && <div>Type : {f.properties.kind}</div>}
+                    {typeof f.properties.score === 'number' && <div>Note : {f.properties.score}</div>}
+                  </div>
                 </Popup>
               </Marker>
             );
           })}
         </MapContainer>
       </div>
+      <div style={{ fontSize: 12, marginTop: 6 }}>Résultats : {features.length}</div>
     </div>
   );
 }
