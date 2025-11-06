@@ -16,14 +16,11 @@ type FeatureCollection = { type: 'FeatureCollection'; features: Feature[] };
 
 const defaultCenter: LatLng = [46.5, 2.5];
 
-const icon = new L.Icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+// Icônes Leaflet par défaut (évite d'utiliser la prop `icon` sur <Marker>)
+L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -28],
-  shadowSize: [41, 41],
 });
 
 export default function ClientMap() {
@@ -43,7 +40,7 @@ export default function ClientMap() {
     return () => { cancelled = true; };
   }, []);
 
-  // Cast "any" pour neutraliser le bug de typings côté build Render
+  // Casts ciblés pour neutraliser les soucis de typings React-Leaflet en build
   const MapAny = MapContainer as unknown as any;
   const LayersAny = LayersControl as unknown as any;
 
@@ -68,7 +65,7 @@ export default function ClientMap() {
             if (typeof lat !== 'number' || typeof lon !== 'number') return null;
             const pos: LatLng = [lat, lon]; // Leaflet attend [lat, lon]
             return (
-              <Marker key={f.properties.id} position={pos} icon={icon}>
+              <Marker key={f.properties.id} position={pos}>
                 <Popup>
                   <div>
                     <strong>{f.properties.name}</strong>
