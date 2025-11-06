@@ -1,12 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MapContainer as RLMapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import {
+  MapContainer as RLMapContainer,
+  TileLayer as RLTileLayer,
+  Marker,
+  Popup,
+} from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// ---- Typage minimal pour éviter l'erreur "center n'existe pas" ----
+// ---- Casts pour calmer TypeScript avec react-leaflet ----
 const MapContainer: any = RLMapContainer;
+const TileLayer: any = RLTileLayer;
 
 type Feature = {
   id: string;
@@ -54,14 +60,16 @@ export default function Map() {
                 <Popup>
                   <div style={{ fontWeight: 600 }}>{f.properties?.name ?? f.id}</div>
                   <div>Type : {f.properties?.kind ?? '—'}</div>
-                  {typeof f.properties?.score === 'number' && <div>Note : {f.properties.score.toFixed(1)}</div>}
+                  {typeof f.properties?.score === 'number' && (
+                    <div>Note : {f.properties.score.toFixed(1)}</div>
+                  )}
                 </Popup>
               </Marker>
             );
           })}
         </MapContainer>
       </div>
-      <div style={{ fontSize: 12, marginTop: 6, textAlign: 'left' }}>Résultats : {features.length}</div>
+      <div style={{ fontSize: 12, marginTop: 6 }}>Résultats : {features.length}</div>
     </div>
   );
 }
