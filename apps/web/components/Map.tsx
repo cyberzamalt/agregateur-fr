@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, LayersControl } from 'react-leaflet';
-import type { LatLngTuple } from 'leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+
+type LatLng = [number, number];
 
 type Feature = {
   type: 'Feature';
@@ -21,7 +22,7 @@ type Feature = {
 
 type FeatureCollection = { type: 'FeatureCollection'; features: Feature[] };
 
-const defaultCenter: LatLngTuple = [46.5, 2.5];
+const defaultCenter: LatLng = [46.5, 2.5];
 
 const icon = new L.Icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -69,7 +70,7 @@ export default function ClientMap() {
           {features.map((f) => {
             const [lon, lat] = f.geometry?.coordinates ?? [];
             if (typeof lat !== 'number' || typeof lon !== 'number') return null;
-            const pos: LatLngTuple = [lat, lon]; // Leaflet attend [lat, lon]
+            const pos: LatLng = [lat, lon]; // Leaflet attend [lat, lon]
             return (
               <Marker key={f.properties.id} position={pos} icon={icon}>
                 <Popup>
