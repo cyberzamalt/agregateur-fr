@@ -1,90 +1,71 @@
-/* @ts-nocheck */
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import dynamic from 'next/dynamic';
+import {useEffect, useState} from 'react';
+import {MapContainer, TileLayer, Marker, Popup} from 'react-leaflet';
+import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// React-Leaflet en client-only (cast any pour taire les typings côté build)
-const MapContainer = dynamic(() => import('react-leaflet').then(m => m.MapContainer), { ssr: false }) as any;
-const TileLayer     = dynamic(() => import('react-leaflet').then(m => m.TileLayer),     { ssr: false }) as any;
-const Marker        = dynamic(() => import('react-leaflet').then(m => m.Marker),        { ssr: false }) as any;
-const Popup         = dynamic(() => import('react-leaflet').then(m => m.Popup),         { ssr: false }) as any;
-const LayersControl = dynamic(() => import('react-leaflet').then(m => m.LayersControl), { ssr: false }) as any;
-
 type Feature = {
+  id: string;
+  properties?: { name?: string; kind?: string; score?: number };
   geometry: { type: 'Point'; coordinates: [number, number] }; // [lon, lat]
-  properties: { id: string; name: string; kind?: string | null; score?: number | null };
 };
-type FC = { type: 'FeatureCollection'; features: Feature[] };
+
+// Icône par défaut (corrige les marqueurs vides)
+const defaultIcon = new L.Icon({
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+(L.Marker.prototype as any).options.icon = defaultIcon;
 
 export default function Map() {
-  const [data, setData] = useState<FC | null>(null);
+  const [features, setFeatures] = useState<Feature[]>([]);
 
-  // Importer Leaflet *dynamiquement* pour éviter "window is not defined"
   useEffect(() => {
-    (async () => {
-      const L = (await import('leaflet')).default as any;
-      // corriger les icônes par défaut sous Next
-      delete L.Icon.Default.prototype._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-      });
-    })();
-  }, []);
-
-  // Source unique côté web
-  useEffect(() => {
-    fetch('/sites.geojson', { cache: 'no-store' })
+    let alive = true;
+    fetch('/sites.geojson')
       .then(r => r.json())
-      .then(setData)
-      .catch(() => setData({ type: 'FeatureCollection', features: [] }));
+      .then(d => {
+        const feats = Array.isArray(d?.features) ? (d.features as Feature[]) : [];
+        if (alive) setFeatures(feats);
+      })
+      .catch(() => setFeatures([]));
+    return () => { alive = false; };
   }, []);
-
-  const center = useMemo<[number, number]>(() => [46.8, 2.5], []);
-  const zoom = 6;
 
   return (
-    <div style={{ width: '100%', maxWidth: 900, height: 420 }}>
-      <MapContainer center={center} zoom={zoom} style={{ width: '100%', height: '100%', borderRadius: 12 }}>
-        <LayersControl position="topright">
-          <LayersControl.BaseLayer checked name="Standard (OSM)">
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution="&copy; OpenStreetMap contributors"
-            />
-          </LayersControl.BaseLayer>
-          <LayersControl.BaseLayer name="Relief (OpenTopoMap)">
-            <TileLayer
-              url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
-              attribution="Map data: &copy; OpenStreetMap contributors, SRTM | Style: &copy; OpenTopoMap"
-            />
-          </LayersControl.BaseLayer>
-          <LayersControl.BaseLayer name="Satellite (Esri)">
-            <TileLayer
-              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-              attribution="Tiles &copy; Esri"
-            />
-          </LayersControl.BaseLayer>
-        </LayersControl>
-
-        {data?.features.map(f => {
-          const [lon, lat] = f.geometry.coordinates;
-          return (
-            <Marker key={f.properties.id} position={[lat, lon]}>
-              <Popup>
-                <strong>{f.properties.name}</strong>
-                {f.properties.kind ? <div>Type : {f.properties.kind}</div> : null}
-                {f.properties.score ? <div>Note : {f.properties.score}</div> : null}
-              </Popup>
-            </Marker>
-          );
-        })}
-      </MapContainer>
-
-      <div style={{ fontSize: 12, marginTop: 6 }}>Résultats : {data?.features.length ?? 0}</div>
+    <div style={{ width: '100%', maxWidth: 900, margin: '0 auto' }}>
+      <div style={{ width: '100%', height: 420, borderRadius: 12, overflow: 'hidden', border: '1px solid #333' }}>
+        <MapContainer center={[46.5, 2.5]} zoom={6} style={{ width: '100%', height: '100%' }}>
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution="&copy; OpenStreetMap contributors"
+          />
+          {features.map(f => {
+            const [lon, lat] = f.geometry.coordinates || [];
+            if (typeof lat !== 'number' || typeof lon !== 'number') return null;
+            return (
+              <Marker key={f.id} position={[lat, lon]}>
+                <Popup>
+                  <div style={{ fontWeight: 600 }}>{f.properties?.name ?? f.id}</div>
+                  <div>Type : {f.properties?.kind ?? '—'}</div>
+                  {typeof f.properties?.score === 'number' && (
+                    <div>Note : {f.properties.score.toFixed(1)}</div>
+                  )}
+                </Popup>
+              </Marker>
+            );
+          })}
+        </MapContainer>
+      </div>
+      <div style={{ fontSize: 12, marginTop: 6, textAlign: 'left' }}>
+        Résultats : {features.length}
+      </div>
     </div>
   );
 }
