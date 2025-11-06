@@ -1,75 +1,85 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import {
-  MapContainer as RLMapContainer,
-  TileLayer as RLTileLayer,
-  Marker,
-  Popup,
-} from 'react-leaflet';
-import L from 'leaflet';
+import { MapContainer, TileLayer, LayersControl, Marker, Popup } from 'react-leaflet';
+import type { FC } from 'react';
+import type { LatLngExpression } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
 
-// ---- Casts pour calmer TypeScript avec react-leaflet ----
-const MapContainer: any = RLMapContainer;
-const TileLayer: any = RLTileLayer;
+// ✅ Fix des icônes Leaflet (Next ne résout pas les assets par défaut)
+const IconDefault = L.Icon.Default as any;
+IconDefault.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl:       'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
 
-type Feature = {
-  id: string;
-  properties?: { name?: string; kind?: string; score?: number };
+export type SiteFeature = {
+  type: 'Feature';
   geometry: { type: 'Point'; coordinates: [number, number] }; // [lon, lat]
+  properties: {
+    id: string;
+    name: string;
+    kind?: string;
+    region?: string;
+    score?: number;
+  };
 };
 
-// Icône par défaut
-const defaultIcon = new L.Icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-(L.Marker.prototype as any).options.icon = defaultIcon;
+type Props = {
+  features: SiteFeature[];
+  center?: LatLngExpression;
+  zoom?: number;
+};
 
-export default function Map() {
-  const [features, setFeatures] = useState<Feature[]>([]);
-
-  useEffect(() => {
-    let alive = true;
-    fetch('/sites.geojson')
-      .then(r => r.json())
-      .then(d => alive ? setFeatures(Array.isArray(d?.features) ? d.features : []) : undefined)
-      .catch(() => setFeatures([]));
-    return () => { alive = false; };
-  }, []);
-
+const Map: FC<Props> = ({ features, center = [46.5, 2.5], zoom = 6 }) => {
   return (
-    <div style={{ width: '100%', maxWidth: 900, margin: '0 auto' }}>
+    <div style={{ width: '100%', maxWidth: 980, margin: '0 auto' }}>
       <div style={{ width: '100%', height: 420, borderRadius: 12, overflow: 'hidden', border: '1px solid #333' }}>
-        <MapContainer center={[46.5, 2.5]} zoom={6} style={{ width: '100%', height: '100%' }}>
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution="&copy; OpenStreetMap contributors"
-          />
-          {features.map(f => {
+        <MapContainer center={center} zoom={zoom} style={{ width: '100%', height: '100%' }}>
+          {/* Fonds de carte */}
+          <LayersControl position="topright">
+            <LayersControl.BaseLayer checked name="Standard (OSM)">
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution="&copy; OpenStreetMap contributors"
+              />
+            </LayersControl.BaseLayer>
+
+            <LayersControl.BaseLayer name="Relief (OpenTopoMap)">
+              <TileLayer
+                url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
+                attribution="&copy; OpenTopoMap contributors, &copy; OpenStreetMap"
+              />
+            </LayersControl.BaseLayer>
+
+            <LayersControl.BaseLayer name="Satellite (Esri)">
+              <TileLayer
+                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                attribution="&copy; Esri, Maxar, Earthstar Geographics"
+              />
+            </LayersControl.BaseLayer>
+          </LayersControl>
+
+          {/* Marqueurs */}
+          {features.map((f) => {
             const [lon, lat] = f.geometry.coordinates || [];
             if (typeof lat !== 'number' || typeof lon !== 'number') return null;
             return (
-              <Marker key={f.id} position={[lat, lon]}>
+              <Marker key={f.properties.id} position={[lat, lon]}>
                 <Popup>
-                  <div style={{ fontWeight: 600 }}>{f.properties?.name ?? f.id}</div>
-                  <div>Type : {f.properties?.kind ?? '—'}</div>
-                  {typeof f.properties?.score === 'number' && (
-                    <div>Note : {f.properties.score.toFixed(1)}</div>
-                  )}
+                  <div style={{ fontWeight: 600 }}>{f.properties.name}</div>
+                  <div>Type : {f.properties.kind || '—'}</div>
+                  <div>Région : {f.properties.region || '—'}</div>
+                  <div>Note : {typeof f.properties.score === 'number' ? f.properties.score.toFixed(1) : '—'}</div>
                 </Popup>
               </Marker>
             );
           })}
         </MapContainer>
       </div>
-      <div style={{ fontSize: 12, marginTop: 6 }}>Résultats : {features.length}</div>
     </div>
   );
-}
+};
+
+export default Map;
