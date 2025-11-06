@@ -1,28 +1,29 @@
-import Map from "../../components/Map";
-import path from "path";
-import { promises as fs } from "fs";
+'use client';
 
-export const dynamic = "force-dynamic";
+import { useEffect, useState } from 'react';
+import Map from '@/components/Map';
 
-async function readTotalFromGeoJSON(): Promise<number> {
-  try {
-    const file = path.join(process.cwd(), "public", "sites.geojson");
-    const text = await fs.readFile(file, "utf8");
-    const gj = JSON.parse(text);
-    return Array.isArray(gj?.features) ? gj.features.length : 0;
-  } catch {
-    return 0;
-  }
-}
+type Feature = {
+  geometry: { type: 'Point'; coordinates: [number, number] }; // lon, lat
+  properties: { id: string; name: string; kind?: string | null; score?: number | null };
+};
+type FeatureCollection = { type: 'FeatureCollection'; features: Feature[] };
 
-export default async function SitesPage() {
-  const total = await readTotalFromGeoJSON();
+export default function SitesPage() {
+  const [data, setData] = useState<FeatureCollection>({ type: 'FeatureCollection', features: [] });
+
+  useEffect(() => {
+    fetch('/sites.geojson', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(setData)
+      .catch(() => setData({ type: 'FeatureCollection', features: [] }));
+  }, []);
 
   return (
-    <main className="mx-auto max-w-5xl p-6 space-y-6">
-      <h1 className="text-2xl font-semibold">Sites d&apos;Urbex</h1>
-      <Map />
-      <div className="text-sm opacity-80">Résultats : {total}</div>
+    <main style={{ maxWidth: 1100, margin: '40px auto', padding: '0 16px' }}>
+      <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 16 }}>Sites d'Urbex</h1>
+      <Map data={data} />
+      <div style={{ fontSize: 12, marginTop: 6 }}>Résultats : {data.features.length}</div>
     </main>
   );
 }
