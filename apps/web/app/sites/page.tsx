@@ -1,4 +1,5 @@
-// après (chemins relatifs qui marchent tout de suite)
+// apps/web/app/sites/page.tsx — lit via getSites() (GeoJSON) et affiche le bon compteur
+
 import Map from "../../components/Map";
 import { getSites } from "../../lib/api";
 
@@ -26,7 +27,7 @@ export default async function SitesPage({
     <main className="mx-auto max-w-5xl p-6 space-y-6">
       <h1 className="text-2xl font-semibold">Sites d&apos;Urbex</h1>
 
-      {/* Carte */}
+      {/* Carte (lit aussi /sites.geojson) */}
       <Map />
 
       {/* Compteur + simple liste */}
@@ -37,6 +38,7 @@ export default async function SitesPage({
             <div className="font-medium">{s.name}</div>
             <div className="text-xs opacity-75">
               {s.kind ?? "—"} {s.region ? `· ${s.region}` : ""} {s.dept_code ? `· ${s.dept_code}` : ""}
+              {typeof s.score === "number" ? ` · ★ ${s.score}` : ""}
             </div>
           </li>
         ))}
