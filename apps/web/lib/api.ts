@@ -1,4 +1,4 @@
-// apps/web/lib/api.ts — version minimale, avec retry Render
+// apps/web/lib/api.ts — lecture unique depuis /sites.geojson + filtres/pagination côté web
 
 export type AccessFlag = "public" | "prive" | "militaire" | "inconnu";
 
@@ -37,50 +37,83 @@ export interface SiteQuery {
   pageSize?: number;
 }
 
-function resolveApiBase(): string {
-  const env = process.env.NEXT_PUBLIC_API_URL;
-  if (env && env.trim().length > 0) return env.trim();
+/** Base pour fetch côté serveur (Render) ou côté client */
+function resolveSelfBase(): string {
   if (typeof window !== "undefined") return window.location.origin;
-  return "";
+  return "http://localhost"; // Next server interne
 }
 
-const API_BASE = resolveApiBase();
+type Feature = {
+  geometry?: { type?: string; coordinates?: [number, number] };
+  properties?: Record<string, any>;
+};
+type FC = { type: "FeatureCollection"; features: Feature[] };
 
-function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
-}
+/** Charge /sites.geojson et le transforme en tableau de Site */
+async function loadSitesFromGeoJSON(): Promise<Site[]> {
+  const base = resolveSelfBase();
+  const url = new URL("/sites.geojson", base).toString();
 
-// 🔹 CE QUI COMPTE : on exporte bien getSites (avec retry 429/502/503)
-export async function getSites(params: SiteQuery): Promise<Paginated<Site>> {
-  const base =
-    API_BASE || (typeof window !== "undefined" ? window.location.origin : "http://localhost");
-  const url = new URL("/api/sites", base);
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error(`geojson ${res.status}`);
+  const data: FC = await res.json();
 
-  Object.entries(params).forEach(([k, v]) => {
-    if (v === undefined || v === null || v === "") return;
-    url.searchParams.set(k, String(v));
+  const sites: Site[] = (data.features || []).map((f, i) => {
+    const p = f.properties || {};
+    const coords = Array.isArray(f.geometry?.coordinates)
+      ? { lon: f.geometry!.coordinates![0], lat: f.geometry!.coordinates![1] }
+      : null;
+
+    return {
+      id: String(p.id ?? p.uuid ?? p.code ?? p.slug ?? p.name ?? `feat-${i}`),
+      name: String(p.name ?? p.title ?? "—"),
+      kind: String(p.kind ?? p.type ?? "—"),
+      commune: p.commune ?? p.city ?? undefined,
+      dept_code: p.dept_code ?? p.dept ?? p.departement ?? undefined,
+      region: p.region ?? p.region_name ?? undefined,
+      region_code: p.region_code ?? undefined,
+      coords: coords ? { lat: coords.lat, lon: coords.lon } : null,
+      score: typeof p.score === "number" ? p.score : undefined,
+      score_reasons: Array.isArray(p.score_reasons) ? p.score_reasons : undefined,
+      sources: p.sources,
+      last_seen: p.last_seen,
+      access_flag: p.access_flag,
+      risk_flags: p.risk_flags,
+    };
   });
 
-  const maxTries = 12; // ~24s max avec backoff
-  for (let i = 0; i < maxTries; i++) {
-    const res = await fetch(url.toString(), { cache: "no-store" });
+  return sites;
+}
 
-    if (res.ok) {
-      return res.json();
-    }
+/** Filtres simples côté web */
+function applyFilters(all: Site[], q?: string, region?: string, dept?: string, kind?: string, minScore?: number): Site[] {
+  let list = all;
 
-    // Réveil Render : on attend et on retente
-    if ([429, 502, 503].includes(res.status)) {
-      await sleep(1000 + i * 1000); // 1s, 2s, 3s, ...
-      continue;
-    }
-
-    // Autre erreur : on remonte
-    throw new Error(`API ${res.status}`);
+  if (q && q.trim()) {
+    const s = q.trim().toLowerCase();
+    list = list.filter((x) =>
+      [x.name, x.kind, x.commune, x.region, x.dept_code].some((v) => (v ?? "").toLowerCase().includes(s))
+    );
   }
+  if (region && region !== "") list = list.filter((x) => (x.region ?? "") === region);
+  if (dept && dept !== "") list = list.filter((x) => (x.dept_code ?? "") === dept);
+  if (kind && kind !== "") list = list.filter((x) => (x.kind ?? "") === kind);
+  if (typeof minScore === "number") list = list.filter((x) => (x.score ?? -Infinity) >= minScore);
 
-  // Si l'API reste endormie trop longtemps, on renvoie une réponse vide propre
-  const page = Number(params.page ?? 1);
-  const pageSize = Number(params.pageSize ?? 20);
-  return { ok: true, total: 0, page, pageSize, items: [] };
+  return list;
+}
+
+/** API locale remplaçant l’ancienne : lit le GeoJSON puis filtre/pagine */
+export async function getSites(params: SiteQuery): Promise<Paginated<Site>> {
+  const page = Math.max(1, Number(params.page ?? 1));
+  const pageSize = Math.max(1, Math.min(100, Number(params.pageSize ?? 20)));
+
+  const all = await loadSitesFromGeoJSON();
+  const filtered = applyFilters(all, params.q, params.region, params.dept, params.kind, params.minScore);
+
+  const total = filtered.length;
+  const start = (page - 1) * pageSize;
+  const items = filtered.slice(start, start + pageSize);
+
+  return { ok: true, total, page, pageSize, items };
 }
