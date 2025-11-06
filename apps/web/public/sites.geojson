@@ -3,7 +3,7 @@
   "features": [
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [2.474, 49.01] },
+      "geometry": { "type": "Point", "coordinates": [2.472, 49.03] },
       "properties": {
         "id": "goussainville-vieux-pays",
         "name": "Goussainville — Vieux-Pays (village fantôme)",
@@ -15,34 +15,22 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [2.357, 48.936] },
+      "geometry": { "type": "Point", "coordinates": [2.347, 48.906] },
       "properties": {
-        "id": "usine-saint-denis",
-        "name": "Ancienne usine — Saint-Denis",
+        "id": "saint-denis-usine",
+        "name": "Ancienne usine – Saint-Denis",
         "kind": "friche-industrielle",
         "region": "Île-de-France",
         "dept_code": "93",
-        "score": 3.8
+        "score": 3.7
       }
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [2.313, 48.596] },
+      "geometry": { "type": "Point", "coordinates": [6.022, 47.266] },
       "properties": {
-        "id": "ba217-bretigny",
-        "name": "Base aérienne 217 — zone désaffectée",
-        "kind": "militaire",
-        "region": "Île-de-France",
-        "dept_code": "91",
-        "score": 3.6
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [6.022, 47.246] },
-      "properties": {
-        "id": "rhodiaceta-besancon",
-        "name": "Rhodiacéta — Besançon (friche)",
+        "id": "hodierotte-besancon",
+        "name": "Hôdierotte – Besançon (friche)",
         "kind": "friche-industrielle",
         "region": "Bourgogne-Franche-Comté",
         "dept_code": "25",
@@ -51,11 +39,23 @@
     },
     {
       "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [2.255, 44.56] },
+      "geometry": { "type": "Point", "coordinates": [6.246, 49.115] },
+      "properties": {
+        "id": "base-217-briey",
+        "name": "Base aérienne 217 – zone désaffectée",
+        "kind": "militaire",
+        "region": "Grand Est",
+        "dept_code": "54",
+        "score": 3.6
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [2.356, 44.946] },
       "properties": {
         "id": "decazeville-mine",
-        "name": "Ancienne mine — Decazeville",
-        "kind": "site-minier",
+        "name": "Ancienne mine – Decazeville",
+        "kind": "site minier",
         "region": "Occitanie",
         "dept_code": "12",
         "score": 3.5
