@@ -1,9 +1,11 @@
-// Empêche tout pré-rendu côté serveur (Leaflet est 100% client)
+// Empêche tout pré-rendu (Leaflet = client)
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-import dynamic from 'next/dynamic';
-const ClientMap = dynamic(() => import('@/components/Map'), { ssr: false });
+import NextDynamic from 'next/dynamic';
+
+// si l’alias @ ne marche pas chez toi, remplace par '../../components/Map'
+const ClientMap = NextDynamic(() => import('@/components/Map'), { ssr: false });
 
 export default function SitesPage() {
   return (
