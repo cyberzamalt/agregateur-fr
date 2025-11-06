@@ -1,6 +1,4 @@
-// /apps/web/app/sites/page.tsx
 import Map from '../../components/Map';
-
 export default function SitesPage() {
   return (
     <main style={{ padding: 24 }}>
