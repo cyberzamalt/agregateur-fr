@@ -16,7 +16,6 @@ type FeatureCollection = { type: 'FeatureCollection'; features: Feature[] };
 
 const defaultCenter: LatLng = [46.5, 2.5];
 
-// Icônes Leaflet par défaut (évite d'utiliser la prop `icon` sur <Marker>)
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -40,7 +39,6 @@ export default function ClientMap() {
     return () => { cancelled = true; };
   }, []);
 
-  // Casts ciblés pour neutraliser les soucis de typings React-Leaflet en build
   const MapAny = MapContainer as unknown as any;
   const LayersAny = LayersControl as unknown as any;
 
@@ -63,7 +61,7 @@ export default function ClientMap() {
           {features.map((f) => {
             const [lon, lat] = f.geometry?.coordinates ?? [];
             if (typeof lat !== 'number' || typeof lon !== 'number') return null;
-            const pos: LatLng = [lat, lon]; // Leaflet attend [lat, lon]
+            const pos: LatLng = [lat, lon];
             return (
               <Marker key={f.properties.id} position={pos}>
                 <Popup>
