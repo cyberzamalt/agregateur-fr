@@ -9,17 +9,9 @@ type LatLng = [number, number];
 
 type Feature = {
   type: 'Feature';
-  properties: {
-    id: string;
-    name: string;
-    kind?: string;
-    region?: string;
-    dept_code?: string;
-    score?: number;
-  };
+  properties: { id: string; name: string; kind?: string; region?: string; dept_code?: string; score?: number };
   geometry: { type: 'Point'; coordinates: [number, number] }; // [lon, lat]
 };
-
 type FeatureCollection = { type: 'FeatureCollection'; features: Feature[] };
 
 const defaultCenter: LatLng = [46.5, 2.5];
@@ -51,21 +43,25 @@ export default function ClientMap() {
     return () => { cancelled = true; };
   }, []);
 
+  // Cast "any" pour neutraliser le bug de typings côté build Render
+  const MapAny = MapContainer as unknown as any;
+  const LayersAny = LayersControl as unknown as any;
+
   return (
     <div style={{ width: '100%', maxWidth: 900, margin: '0 auto' }}>
       <div style={{ width: '100%', height: 420, borderRadius: 12, overflow: 'hidden', border: '1px solid #333' }}>
-        <MapContainer center={defaultCenter} zoom={6} style={{ width: '100%', height: '100%' }}>
-          <LayersControl position="topright">
-            <LayersControl.BaseLayer checked name="Standard (OSM)">
+        <MapAny center={defaultCenter} zoom={6} style={{ width: '100%', height: '100%' }}>
+          <LayersAny position="topright">
+            <LayersAny.BaseLayer checked name="Standard (OSM)">
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            </LayersControl.BaseLayer>
-            <LayersControl.BaseLayer name="Relief (Topo)">
+            </LayersAny.BaseLayer>
+            <LayersAny.BaseLayer name="Relief (Topo)">
               <TileLayer url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png" />
-            </LayersControl.BaseLayer>
-            <LayersControl.BaseLayer name="Satellite (ESRI)">
+            </LayersAny.BaseLayer>
+            <LayersAny.BaseLayer name="Satellite (ESRI)">
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" />
-            </LayersControl.BaseLayer>
-          </LayersControl>
+            </LayersAny.BaseLayer>
+          </LayersAny>
 
           {features.map((f) => {
             const [lon, lat] = f.geometry?.coordinates ?? [];
@@ -83,7 +79,7 @@ export default function ClientMap() {
               </Marker>
             );
           })}
-        </MapContainer>
+        </MapAny>
       </div>
       <div style={{ fontSize: 12, marginTop: 6 }}>Résultats : {features.length}</div>
     </div>
