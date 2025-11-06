@@ -1,22 +1,28 @@
-// @ts-nocheck
+/* @ts-nocheck */
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  LayersControl,
+} from 'react-leaflet';
 
-// Corrige les icônes par défaut sous Next
-// @ts-ignore
-delete L.Icon.Default.prototype._getIconUrl;
+// Corrige les icônes par défaut (Next/Leaflet)
+delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'
+  iconRetinaUrl:
+    'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
 type Feature = {
-  geometry: { type: 'Point'; coordinates: [number, number] }; // [lon, lat]
+  geometry: { type: 'Point'; coordinates: [number, number] }; // lon, lat
   properties: { id: string; name: string; kind?: string | null; score?: number | null };
 };
 type FC = { type: 'FeatureCollection'; features: Feature[] };
@@ -26,49 +32,62 @@ export default function MapInner() {
 
   useEffect(() => {
     fetch('/sites.geojson', { cache: 'no-store' })
-      .then(r => (r.ok ? r.json() : { type: 'FeatureCollection', features: [] }))
+      .then((r) => r.json())
       .then(setData)
-      .catch(() => setData({ type: 'FeatureCollection', features: [] }));
+      .catch(() =>
+        setData({ type: 'FeatureCollection', features: [] })
+      );
   }, []);
 
-  const center: [number, number] = useMemo(() => [46.8, 2.5], []);
+  const center = useMemo<[number, number]>(() => [46.8, 2.5], []);
   const zoom = 5;
 
   return (
-    <div style={{ width: '100%', height: 420, borderRadius: 12, overflow: 'hidden', border: '1px solid #333' }}>
+    <div
+      style={{
+        width: '100%',
+        height: 420,
+        borderRadius: 12,
+        overflow: 'hidden',
+        border: '1px solid #333',
+      }}
+    >
       <MapContainer center={center} zoom={zoom} style={{ width: '100%', height: '100%' }}>
         {/* Sélecteur de fonds de carte */}
         <LayersControl position="topright">
           <LayersControl.BaseLayer checked name="Standard (OSM)">
             <TileLayer
-              attribution="&copy; OpenStreetMap"
+              attribution='&copy; OpenStreetMap contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
           </LayersControl.BaseLayer>
 
-          <LayersControl.BaseLayer name="Topo / Relief (OpenTopoMap)">
+          <LayersControl.BaseLayer name="Relief (OpenTopoMap)">
             <TileLayer
-              attribution="&copy; OpenTopoMap contributors"
+              attribution='Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap (CC-BY-SA)'
               url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
             />
           </LayersControl.BaseLayer>
 
           <LayersControl.BaseLayer name="Satellite (Esri)">
             <TileLayer
-              attribution="Tiles &copy; Esri — World Imagery"
+              attribution='Tiles &copy; Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
               url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
             />
           </LayersControl.BaseLayer>
         </LayersControl>
 
-        {(data?.features ?? []).map((f) => {
+        {/* Marqueurs */}
+        {data?.features.map((f) => {
           const [lon, lat] = f.geometry.coordinates;
           return (
             <Marker key={f.properties.id} position={[lat, lon]}>
               <Popup>
                 <strong>{f.properties.name}</strong>
                 {f.properties.kind ? <div>Type : {f.properties.kind}</div> : null}
-                {f.properties.score != null ? <div>Note : {f.properties.score}</div> : null}
+                {typeof f.properties.score === 'number' ? (
+                  <div>Note : {f.properties.score}</div>
+                ) : null}
               </Popup>
             </Marker>
           );
