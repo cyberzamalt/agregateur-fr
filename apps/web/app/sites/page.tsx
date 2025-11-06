@@ -1,10 +1,9 @@
+// Empêche tout pré-rendu côté serveur (Leaflet est 100% client)
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-import dynamicImport from 'next/dynamic';
-
-// Carte uniquement côté client (pas de SSR)
-const ClientMap = dynamicImport(() => import('../../components/Map'), { ssr: false });
+import dynamic from 'next/dynamic';
+const ClientMap = dynamic(() => import('@/components/Map'), { ssr: false });
 
 export default function SitesPage() {
   return (
