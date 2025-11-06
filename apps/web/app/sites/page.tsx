@@ -1,9 +1,9 @@
-// Server Component (par défaut) mais on évite toute pré-rendu/SSG
+// Server Component (pas de SSG/ISR)
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-import dynamic from 'next/dynamic';
-const Map = dynamic(() => import('../../components/Map'), { ssr: false });
+import NextDynamic from 'next/dynamic'; // ⟵ alias
+const Map = NextDynamic(() => import('../../components/Map'), { ssr: false });
 
 export default function SitesPage() {
   return (
