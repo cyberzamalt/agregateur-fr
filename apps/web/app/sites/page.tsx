@@ -5,12 +5,10 @@ import { useEffect, useMemo, useState } from 'react';
 import Filters, { type FilterState } from '../../components/Filters';
 import type { SiteFeature } from '../../components/Map';
 
-// ⛔️ Important: on charge la carte en client-only
+// charge la carte côté client uniquement
 const Map = dynamic(() => import('../../components/Map'), { ssr: false });
 
-type FCProps = unknown;
-
-export default function SitesPage(_: FCProps) {
+export default function SitesPage() {
   const [raw, setRaw] = useState<SiteFeature[]>([]);
   const [filters, setFilters] = useState<FilterState>({
     kind: '',
@@ -19,43 +17,33 @@ export default function SitesPage(_: FCProps) {
     sort: 'score_desc',
   });
 
-  // Chargement du GeoJSON unique
   useEffect(() => {
-    let alive = true;
+    let ok = true;
     (async () => {
       try {
         const res = await fetch('/sites.geojson', { cache: 'no-store' });
         const gj = await res.json();
         const items: SiteFeature[] = (gj?.features ?? []).filter((f: any) => f?.geometry?.type === 'Point');
-        if (alive) setRaw(items);
+        if (ok) setRaw(items);
       } catch {
-        if (alive) setRaw([]);
+        if (ok) setRaw([]);
       }
     })();
-    return () => { alive = false; };
+    return () => { ok = false; };
   }, []);
 
-  // Options pour les filtres
   const kinds = useMemo(() => Array.from(new Set(raw.map(f => f.properties.kind).filter(Boolean))) as string[], [raw]);
   const regions = useMemo(() => Array.from(new Set(raw.map(f => f.properties.region).filter(Boolean))) as string[], [raw]);
 
-  // Application des filtres + tri
   const filtered = useMemo(() => {
     let arr = raw.slice();
-
     if (filters.kind)   arr = arr.filter(f => (f.properties.kind || '') === filters.kind);
     if (filters.region) arr = arr.filter(f => (f.properties.region || '') === filters.region);
     if (filters.minScore > 0) arr = arr.filter(f => (f.properties.score ?? 0) >= filters.minScore);
-
     switch (filters.sort) {
-      case 'score_asc':
-        arr.sort((a, b) => (a.properties.score ?? 0) - (b.properties.score ?? 0));
-        break;
-      case 'name':
-        arr.sort((a, b) => (a.properties.name || '').localeCompare(b.properties.name || ''));
-        break;
-      default:
-        arr.sort((a, b) => (b.properties.score ?? 0) - (a.properties.score ?? 0)); // score_desc
+      case 'score_asc': arr.sort((a,b)=>(a.properties.score??0)-(b.properties.score??0)); break;
+      case 'name':      arr.sort((a,b)=>(a.properties.name||'').localeCompare(b.properties.name||'')); break;
+      default:          arr.sort((a,b)=>(b.properties.score??0)-(a.properties.score??0));
     }
     return arr;
   }, [raw, filters]);
