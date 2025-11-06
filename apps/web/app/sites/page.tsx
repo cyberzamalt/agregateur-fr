@@ -3,9 +3,8 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 import NextDynamic from 'next/dynamic';
-
-// si l’alias @ ne marche pas chez toi, remplace par '../../components/Map'
-const ClientMap = NextDynamic(() => import('@/components/Map'), { ssr: false });
+// 👉 import RELATIF (pas d'alias @)
+const ClientMap = NextDynamic(() => import('../../components/Map'), { ssr: false });
 
 export default function SitesPage() {
   return (
