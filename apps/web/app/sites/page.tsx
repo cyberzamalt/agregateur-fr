@@ -1,8 +1,8 @@
-import Map from "@/components/Map";
+import Map from "../../components/Map";
 import path from "path";
 import { promises as fs } from "fs";
 
-export const dynamic = "force-dynamic"; // évite le cache côté serveur
+export const dynamic = "force-dynamic";
 
 async function readTotalFromGeoJSON(): Promise<number> {
   try {
