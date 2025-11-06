@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// corrige les icônes sous Next
+// Icônes Leaflet sous Next
 // @ts-ignore
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -15,13 +15,14 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-// imports client-only
-const MapContainer = dynamic(() => import('react-leaflet').then(m => m.MapContainer), { ssr: false });
-const TileLayer     = dynamic(() => import('react-leaflet').then(m => m.TileLayer),     { ssr: false });
-const Marker        = dynamic(() => import('react-leaflet').then(m => m.Marker),        { ssr: false });
-const Popup         = dynamic(() => import('react-leaflet').then(m => m.Popup),         { ssr: false });
-const LayersControl = dynamic(() => import('react-leaflet').then(m => m.LayersControl), { ssr: false });
+// Imports client-only + cast => any (évite les erreurs de types en build)
+const MapContainer = dynamic(() => import('react-leaflet').then(m => m.MapContainer), { ssr: false }) as any;
+const TileLayer     = dynamic(() => import('react-leaflet').then(m => m.TileLayer),     { ssr: false }) as any;
+const Marker        = dynamic(() => import('react-leaflet').then(m => m.Marker),        { ssr: false }) as any;
+const Popup         = dynamic(() => import('react-leaflet').then(m => m.Popup),         { ssr: false }) as any;
+const LayersControl = dynamic(() => import('react-leaflet').then(m => m.LayersControl), { ssr: false }) as any;
 
+// ------- Types de données -------
 type Feature = {
   geometry: { type: 'Point'; coordinates: [number, number] }; // [lon, lat]
   properties: { id: string; name: string; kind?: string | null; score?: number | null };
@@ -44,6 +45,7 @@ export default function Map() {
   return (
     <div style={{ width: '100%', maxWidth: 900, height: 420 }}>
       <MapContainer center={center} zoom={zoom} style={{ width: '100%', height: '100%', borderRadius: 12 }}>
+        {/* Fonds de carte */}
         <LayersControl position="topright">
           <LayersControl.BaseLayer checked name="Standard (OSM)">
             <TileLayer
@@ -67,6 +69,7 @@ export default function Map() {
           </LayersControl.BaseLayer>
         </LayersControl>
 
+        {/* Marqueurs */}
         {data?.features.map(f => {
           const [lon, lat] = f.geometry.coordinates;
           return (
