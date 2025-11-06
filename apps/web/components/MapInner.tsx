@@ -4,18 +4,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+
 import {
   MapContainer as RLMapContainer,
   TileLayer,
   Marker,
   Popup,
-  LayersControl,
+  LayersControl as RLLayersControl,
 } from 'react-leaflet';
 
-// cast pour neutraliser les types de react-leaflet côté build
-const MapContainer: any = RLMapContainer;
+// Neutralise les types côté build
+const MapContainer: any = RLMapContainer as any;
+const LayersControl: any = RLLayersControl as any;
 
-// Corrige les icônes par défaut (Next/Leaflet)
+// Icônes Leaflet (Next)
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -24,7 +26,7 @@ L.Icon.Default.mergeOptions({
 });
 
 type Feature = {
-  geometry: { type: 'Point'; coordinates: [number, number] }; // lon, lat
+  geometry: { type: 'Point'; coordinates: [number, number] };
   properties: { id: string; name: string; kind?: string | null; score?: number | null };
 };
 type FC = { type: 'FeatureCollection'; features: Feature[] };
@@ -43,17 +45,9 @@ export default function MapInner() {
   const zoom = 5;
 
   return (
-    <div
-      style={{
-        width: '100%',
-        height: 420,
-        borderRadius: 12,
-        overflow: 'hidden',
-        border: '1px solid #333',
-      }}
-    >
+    <div style={{ width: '100%', height: 420, borderRadius: 12, overflow: 'hidden', border: '1px solid #333' }}>
       <MapContainer center={center} zoom={zoom} style={{ width: '100%', height: '100%' }}>
-        {/* Sélecteur de fonds de carte */}
+        {/* Fonds de carte */}
         <LayersControl position="topright">
           <LayersControl.BaseLayer checked name="Standard (OSM)">
             <TileLayer
