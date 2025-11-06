@@ -1,4 +1,10 @@
-import Map from '../../components/Map';
+// Server Component (par défaut) mais on évite toute pré-rendu/SSG
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+import dynamic from 'next/dynamic';
+const Map = dynamic(() => import('../../components/Map'), { ssr: false });
+
 export default function SitesPage() {
   return (
     <main style={{ padding: 24 }}>
