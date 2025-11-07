@@ -1,13 +1,11 @@
-// Désactive tout cache/SSG pour éviter les soucis avec Leaflet
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+"use client";
 
-import nextDynamic from "next/dynamic";
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import Filters from "../../components/Filters";
 import type { SiteFilters } from "../../lib/api";
 
-const ClientMap = nextDynamic(() => import("../../components/Map"), { ssr: false });
+const ClientMap = dynamic(() => import("../../components/Map"), { ssr: false });
 
 export default function SitesPage() {
   const [filters, setFilters] = useState<SiteFilters>({ scoreMin: 0 });
