@@ -11,7 +11,7 @@ import {
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-// --- Icône Leaflet ---
+// ——— Icône Leaflet CDN ———
 const markerIcon = new L.Icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -21,7 +21,7 @@ const markerIcon = new L.Icon({
   shadowSize: [41, 41],
 });
 
-// --- Types simples ---
+// ——— Types locaux simples (pas d'import "geojson") ———
 type SiteFeature = {
   type: 'Feature';
   geometry: { type: 'Point'; coordinates: [number, number] }; // [lon, lat]
@@ -29,7 +29,7 @@ type SiteFeature = {
 };
 type FeatureCollection = { type: 'FeatureCollection'; features: SiteFeature[] };
 
-// --- Casts any pour neutraliser les d.ts bruyants en prod ---
+// ——— Casts "any" pour neutraliser les soucis de d.ts env ———
 const MapContainer: any = RLMapContainer as any;
 const TileLayer: any = RLTileLayer as any;
 const Marker: any = RLMarker as any;
@@ -48,7 +48,7 @@ export default function Map() {
         let feats: SiteFeature[] = [];
         if (Array.isArray(data)) {
           feats = data as SiteFeature[];
-        } else if (data?.type === 'FeatureCollection' && Array.isArray((data as FeatureCollection).features)) {
+        } else if (data && data.type === 'FeatureCollection' && Array.isArray((data as FeatureCollection).features)) {
           feats = (data as FeatureCollection).features;
         }
 
@@ -84,36 +84,30 @@ export default function Map() {
         <MapContainer center={center} zoom={6} style={{ width: '100%', height: '100%' }}>
           <LayersControl position="topright">
             <LayersControl.BaseLayer checked name="Standard (OSM)">
-              <TileLayer
-                key="osm"
+              <TileLayer 
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                crossOrigin=""
-                maxZoom={19}
+                attribution="&copy; OpenStreetMap contributors"
               />
             </LayersControl.BaseLayer>
 
             <LayersControl.BaseLayer name="Relief (OpenTopoMap)">
-              <TileLayer
-                key="opentopo"
+              <TileLayer 
                 url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
-                crossOrigin=""
-                maxZoom={17}
+                attribution="&copy; OpenTopoMap, &copy; OpenStreetMap contributors"
               />
             </LayersControl.BaseLayer>
 
             <LayersControl.BaseLayer name="Satellite (Esri)">
               <TileLayer
-                key="esri-sat"
                 url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                crossOrigin=""
-                maxZoom={19}
+                attribution="Tiles &copy; Esri"
               />
             </LayersControl.BaseLayer>
           </LayersControl>
 
           {features.map(f => {
             const [lon, lat] = f.geometry.coordinates;
-            const pos: [number, number] = [lat, lon]; // Leaflet attend [lat, lon]
+            const pos: [number, number] = [lat, lon]; // Leaflet = [lat, lon]
             return (
               <Marker key={f.properties.id} position={pos} icon={markerIcon}>
                 <Popup>
