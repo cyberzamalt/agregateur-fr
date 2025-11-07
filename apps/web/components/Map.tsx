@@ -1,82 +1,99 @@
+// @ts-nocheck
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-type LatLng = [number, number];
-
-type Feature = {
-  type: 'Feature';
-  properties: { id: string; name: string; kind?: string; region?: string; dept_code?: string; score?: number };
-  geometry: { type: 'Point'; coordinates: [number, number] }; // [lon, lat]
-};
-type FeatureCollection = { type: 'FeatureCollection'; features: Feature[] };
-
-const defaultCenter: LatLng = [46.5, 2.5];
-
+// Icônes par défaut corrigeées (Next)
+delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-export default function ClientMap() {
-  const [features, setFeatures] = useState<Feature[]>([]);
+type Feature = {
+  geometry: { type: 'Point'; coordinates: [number, number] }; // [lon, lat]
+  properties: { id: string; name: string; kind?: string | null; score?: number | null };
+};
+type FC = { type: 'FeatureCollection'; features: Feature[] };
+
+export default function Map() {
+  const [fc, setFc] = useState<FC | null>(null);
+  const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
     (async () => {
       try {
         const r = await fetch('/sites.geojson', { cache: 'no-store' });
-        const data: FeatureCollection = await r.json();
-        if (!cancelled) setFeatures(Array.isArray(data?.features) ? data.features : []);
-      } catch {
-        if (!cancelled) setFeatures([]);
+        if (!r.ok) throw new Error('geojson ' + r.status);
+        const j = await r.json();
+        setFc(j);
+      } catch (e: any) {
+        setErr(e?.message || 'Erreur de chargement');
       }
     })();
-    return () => { cancelled = true; };
   }, []);
 
-  const MapAny = MapContainer as unknown as any;
-  const LayersAny = LayersControl as unknown as any;
+  const features = fc?.features ?? [];
+  const center = useMemo<[number, number]>(() => [46.5, 2.5], []);
 
   return (
-    <div style={{ width: '100%', maxWidth: 900, margin: '0 auto' }}>
+    <div style={{ width: '100%', maxWidth: 1100 }}>
       <div style={{ width: '100%', height: 420, borderRadius: 12, overflow: 'hidden', border: '1px solid #333' }}>
-        <MapAny center={defaultCenter} zoom={6} style={{ width: '100%', height: '100%' }}>
-          <LayersAny position="topright">
-            <LayersAny.BaseLayer checked name="Standard (OSM)">
-              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            </LayersAny.BaseLayer>
-            <LayersAny.BaseLayer name="Relief (Topo)">
-              <TileLayer url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png" />
-            </LayersAny.BaseLayer>
-            <LayersAny.BaseLayer name="Satellite (ESRI)">
-              <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" />
-            </LayersAny.BaseLayer>
-          </LayersAny>
+        {/* Si erreur, affiche un panneau lisible au lieu d’un écran blanc */}
+        {err ? (
+          <div style={{ height: '100%', display: 'grid', placeItems: 'center', padding: 16 }}>
+            <div style={{ opacity: 0.8 }}>
+              Impossible de charger <code>sites.geojson</code> : {err}
+            </div>
+          </div>
+        ) : (
+          <MapContainer center={center} zoom={6} style={{ width: '100%', height: '100%' }}>
+            <LayersControl position="topright">
+              <LayersControl.BaseLayer checked name="OSM standard">
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution="&copy; OpenStreetMap contributors"
+                />
+              </LayersControl.BaseLayer>
 
-          {features.map((f) => {
-            const [lon, lat] = f.geometry?.coordinates ?? [];
-            if (typeof lat !== 'number' || typeof lon !== 'number') return null;
-            const pos: LatLng = [lat, lon];
-            return (
-              <Marker key={f.properties.id} position={pos}>
-                <Popup>
-                  <div>
+              <LayersControl.BaseLayer name="Relief (Stamen Terrain)">
+                <TileLayer
+                  url="https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.jpg"
+                  attribution="Map tiles by Stamen Design, under CC BY 3.0 — Data © OpenStreetMap contributors"
+                />
+              </LayersControl.BaseLayer>
+
+              <LayersControl.BaseLayer name="Satellite (Esri)">
+                <TileLayer
+                  url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                  attribution="Tiles &copy; Esri"
+                />
+              </LayersControl.BaseLayer>
+            </LayersControl>
+
+            {features.map((f) => {
+              const [lon, lat] = f.geometry.coordinates || [];
+              if (typeof lat !== 'number' || typeof lon !== 'number') return null;
+              return (
+                <Marker key={f.properties.id} position={[lat, lon]}>
+                  <Popup>
                     <strong>{f.properties.name}</strong>
-                    {f.properties.kind && <div>Type : {f.properties.kind}</div>}
-                    {typeof f.properties.score === 'number' && <div>Note : {f.properties.score}</div>}
-                  </div>
-                </Popup>
-              </Marker>
-            );
-          })}
-        </MapAny>
+                    {f.properties.kind ? <div>Type : {f.properties.kind}</div> : null}
+                    {f.properties.score != null ? <div>Note : {f.properties.score}</div> : null}
+                  </Popup>
+                </Marker>
+              );
+            })}
+          </MapContainer>
+        )}
       </div>
-      <div style={{ fontSize: 12, marginTop: 6 }}>Résultats : {features.length}</div>
+      <div style={{ marginTop: 8, fontSize: 12, opacity: 0.75 }}>
+        {fc ? `Points affichés : ${features.length}` : 'Chargement en cours…'}
+      </div>
     </div>
   );
 }
