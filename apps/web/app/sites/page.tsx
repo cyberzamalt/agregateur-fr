@@ -2,15 +2,20 @@
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-import dynamic from 'next/dynamic';
+import loadDynamic from 'next/dynamic'; // ⬅️ alias pour éviter le conflit
 
-const ClientMap = dynamic(() => import('@/components/Map'), {
+const ClientMap = loadDynamic(() => import('@/components/Map'), {
   ssr: false,
   loading: () => (
-    <div style={{
-      height: 420, border: '1px solid #333', borderRadius: 12,
-      display: 'grid', placeItems: 'center'
-    }}>
+    <div
+      style={{
+        height: 420,
+        border: '1px solid #333',
+        borderRadius: 12,
+        display: 'grid',
+        placeItems: 'center',
+      }}
+    >
       Chargement de la carte…
     </div>
   ),
