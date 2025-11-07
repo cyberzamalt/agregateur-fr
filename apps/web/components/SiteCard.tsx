@@ -1,6 +1,7 @@
-// apps/web/components/SiteCard.tsx
-import RatingStars from "./RatingStars";
-import type { Site } from "../lib/api";
+'use client';
+
+import RatingStars from "@/components/RatingStars";
+import type { Site } from "@/lib/api";
 
 export default function SiteCard({ site }: { site: Site }) {
   return (
