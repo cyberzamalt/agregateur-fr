@@ -1,72 +1,61 @@
-export type SiteProperties = {
+// Petit client pour l'API /api/sites et types partagés
+export type SiteProps = {
   id: string;
   name: string;
   kind?: string;
   region?: string;
+  department?: string;
+  commune?: string;
   score?: number;
+  address?: string;
+  [k: string]: any;
+};
+export type Feature = {
+  type: "Feature";
+  geometry: { type: "Point"; coordinates: [number, number] }; // [lon,lat]
+  properties: SiteProps;
 };
 
-export type SiteFeature = {
-  type: 'Feature';
-  geometry: { type: 'Point'; coordinates: [number, number] }; // [lon, lat]
-  properties: SiteProperties;
-};
-
-export type FeatureCollection = {
-  type: 'FeatureCollection';
-  features: SiteFeature[];
-};
-
-export type Site = {
-  id: string;
-  name: string;
+export type SiteFilters = {
+  q?: string;
   kind?: string;
   region?: string;
-  score?: number;
-  lat: number;
-  lon: number;
+  department?: string;
+  commune?: string;
+  scoreMin?: number;
+  bbox?: [number, number, number, number]; // minLon,minLat,maxLon,maxLat
 };
 
-/**
- * Charge et convertit /sites.geojson en tableau de Site[].
- * S'exécute côté client (fetch relatif).
- */
-export async function loadSites(): Promise<Site[]> {
-  try {
-    const res = await fetch('/sites.geojson', { cache: 'no-store' });
-    const data = await res.json();
+export function buildQuery(f?: SiteFilters) {
+  if (!f) return "";
+  const u = new URLSearchParams();
+  if (f.q) u.set("q", f.q);
+  if (f.kind) u.set("kind", f.kind);
+  if (f.region) u.set("region", f.region);
+  if (f.department) u.set("department", f.department);
+  if (f.commune) u.set("commune", f.commune);
+  if (typeof f.scoreMin === "number") u.set("scoreMin", String(f.scoreMin));
+  if (f.bbox) u.set("bbox", f.bbox.join(","));
+  return u.toString();
+}
 
-    let feats: SiteFeature[] = [];
+export async function fetchSites(filters?: SiteFilters): Promise<Feature[]> {
+  const qs = buildQuery(filters);
+  const url = qs ? `/api/sites?${qs}` : "/api/sites";
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
 
-    if (Array.isArray(data)) {
-      // Certains dumps arrivent en array direct
-      feats = data as SiteFeature[];
-    } else if (data && data.type === 'FeatureCollection' && Array.isArray((data as FeatureCollection).features)) {
-      feats = (data as FeatureCollection).features;
-    }
-
-    return feats
-      .filter(
-        (f) =>
-          f?.geometry?.type === 'Point' &&
-          Array.isArray(f.geometry.coordinates) &&
-          typeof f.geometry.coordinates[0] === 'number' &&
-          typeof f.geometry.coordinates[1] === 'number'
-      )
-      .map((f) => {
-        const [lon, lat] = f.geometry.coordinates; // GeoJSON = [lon, lat]
-        return {
-          id: String(f.properties?.id ?? `${lat},${lon}`),
-          name: String(f.properties?.name ?? 'Sans nom'),
-          kind: f.properties?.kind,
-          region: f.properties?.region,
-          score: typeof f.properties?.score === 'number' ? f.properties.score : undefined,
-          lat,
-          lon,
-        } as Site;
-      });
-  } catch (e) {
-    console.error('loadSites error', e);
-    return [];
-  }
+export async function fetchMeta() {
+  const res = await fetch("/api/sites?meta=1", { cache: "no-store" });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<{
+    count: number;
+    regions: string[];
+    departments: string[];
+    communes: string[];
+    kinds: string[];
+    updatedAt: string;
+  }>;
 }
