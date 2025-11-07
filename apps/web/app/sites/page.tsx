@@ -1,10 +1,10 @@
-// Empêche tout pré-rendu côté serveur (Leaflet est 100% client)
+// Empêche tout pré-rendu côté serveur (Leaflet = 100% client)
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-import loadDynamic from 'next/dynamic'; // ⬅️ alias pour éviter le conflit
+import loadDynamic from 'next/dynamic'; // alias pour éviter le conflit de nom
 
-const ClientMap = loadDynamic(() => import('@/components/Map'), {
+const ClientMap = loadDynamic(() => import('../../components/Map'), {
   ssr: false,
   loading: () => (
     <div
