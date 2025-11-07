@@ -1,11 +1,17 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, LayersControl } from 'react-leaflet';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  MapContainer as RLMapContainer,
+  TileLayer as RLTileLayer,
+  Marker as RLMarker,
+  Popup as RLPopup,
+  LayersControl as RLLayersControl,
+} from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-// --- Icône Leaflet (CDN) ---
+// ——— Icône Leaflet CDN ———
 const markerIcon = new L.Icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -15,20 +21,20 @@ const markerIcon = new L.Icon({
   shadowSize: [41, 41],
 });
 
-// --- Types locaux (pas d'import 'geojson') ---
+// ——— Types locaux simples (pas d'import "geojson") ———
 type SiteFeature = {
   type: 'Feature';
-  geometry: { type: 'Point'; coordinates: [number, number] }; // GeoJSON: [lon, lat]
-  properties: {
-    id: string;
-    name: string;
-    kind?: string;
-    region?: string;
-    dep_code?: string;
-    score?: number;
-  };
+  geometry: { type: 'Point'; coordinates: [number, number] }; // [lon, lat]
+  properties: { id: string; name: string; kind?: string; region?: string; score?: number };
 };
 type FeatureCollection = { type: 'FeatureCollection'; features: SiteFeature[] };
+
+// ——— Casts "any" pour neutraliser les soucis de d.ts env ———
+const MapContainer: any = RLMapContainer as any;
+const TileLayer: any = RLTileLayer as any;
+const Marker: any = RLMarker as any;
+const Popup: any = RLPopup as any;
+const LayersControl: any = RLLayersControl as any;
 
 export default function Map() {
   const [features, setFeatures] = useState<SiteFeature[]>([]);
@@ -37,16 +43,12 @@ export default function Map() {
     (async () => {
       try {
         const res = await fetch('/sites.geojson', { cache: 'no-store' });
-        const data: unknown = await res.json();
+        const data = await res.json();
 
         let feats: SiteFeature[] = [];
         if (Array.isArray(data)) {
           feats = data as SiteFeature[];
-        } else if (
-          data &&
-          (data as FeatureCollection).type === 'FeatureCollection' &&
-          Array.isArray((data as FeatureCollection).features)
-        ) {
+        } else if (data && data.type === 'FeatureCollection' && Array.isArray((data as FeatureCollection).features)) {
           feats = (data as FeatureCollection).features;
         }
 
@@ -66,30 +68,20 @@ export default function Map() {
     })();
   }, []);
 
-  // Centre auto (moyenne) ou France par défaut
   const center = useMemo<[number, number]>(() => {
     if (!features.length) return [46.5, 2.5];
-    let latSum = 0, lonSum = 0;
-    features.forEach(f => {
-      const [lon, lat] = f.geometry.coordinates;
-      latSum += lat;
-      lonSum += lon;
-    });
-    return [latSum / features.length, lonSum / features.length];
+    let lat = 0, lon = 0;
+    for (const f of features) {
+      const [x, y] = f.geometry.coordinates; // [lon, lat]
+      lon += x; lat += y;
+    }
+    return [lat / features.length, lon / features.length];
   }, [features]);
 
   return (
     <div style={{ width: '100%', maxWidth: 900, margin: '0 auto' }}>
-      <div
-        style={{
-          width: '100%',
-          height: 420,
-          borderRadius: 12,
-          overflow: 'hidden',
-          border: '1px solid #333',
-        }}
-      >
-        <MapContainer center={center as any} zoom={6} style={{ width: '100%', height: '100%' }}>
+      <div style={{ width: '100%', height: 420, borderRadius: 12, overflow: 'hidden', border: '1px solid #333' }}>
+        <MapContainer center={center} zoom={6} style={{ width: '100%', height: '100%' }}>
           <LayersControl position="topright">
             <LayersControl.BaseLayer checked name="Standard (OSM)">
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -100,18 +92,14 @@ export default function Map() {
           </LayersControl>
 
           {features.map(f => {
-            const [lon, lat] = f.geometry.coordinates; // GeoJSON => [lon, lat]
-            const pos: [number, number] = [lat, lon];  // Leaflet => [lat, lon]
+            const [lon, lat] = f.geometry.coordinates;
+            const pos: [number, number] = [lat, lon]; // Leaflet = [lat, lon]
             return (
-              <Marker key={f.properties.id} position={pos as any} icon={markerIcon as any}>
+              <Marker key={f.properties.id} position={pos} icon={markerIcon}>
                 <Popup>
-                  <div>
-                    <strong>{f.properties.name}</strong>
-                    {f.properties.kind && <div>{f.properties.kind}</div>}
-                    {typeof f.properties.score === 'number' && (
-                      <div>Score : {f.properties.score.toFixed(1)}</div>
-                    )}
-                  </div>
+                  <strong>{f.properties.name}</strong>
+                  {f.properties.kind && <div>{f.properties.kind}</div>}
+                  {typeof f.properties.score === 'number' && <div>Score : {f.properties.score.toFixed(1)}</div>}
                 </Popup>
               </Marker>
             );
