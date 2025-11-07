@@ -1,61 +1,60 @@
-// Petit client pour l'API /api/sites et types partagés
-export type SiteProps = {
-  id: string;
-  name: string;
-  kind?: string;
-  region?: string;
-  department?: string;
-  commune?: string;
-  score?: number;
-  address?: string;
-  [k: string]: any;
+// apps/web/lib/api.ts
+export type SiteFeature = {
+  type: 'Feature';
+  geometry: { type: 'Point'; coordinates: [number, number] }; // [lon, lat]
+  properties: {
+    id: string;
+    name: string;
+    kind?: string;
+    region?: string;
+    departement?: string;
+    commune?: string;
+    address?: string;
+    score?: number;
+  };
 };
-export type Feature = {
-  type: "Feature";
-  geometry: { type: "Point"; coordinates: [number, number] }; // [lon,lat]
-  properties: SiteProps;
-};
+
+export type FeatureCollection = { type: 'FeatureCollection'; features: SiteFeature[] };
 
 export type SiteFilters = {
-  q?: string;
-  kind?: string;
-  region?: string;
-  department?: string;
-  commune?: string;
-  scoreMin?: number;
-  bbox?: [number, number, number, number]; // minLon,minLat,maxLon,maxLat
+  q: string;                 // recherche nom/adresse (contient)
+  kind: string;              // type exact (ou '')
+  region: string;            // région exacte (ou '')
+  departement: string;       // département exact (ou '')
+  commune: string;           // commune exacte (ou '')
+  minScore: number;          // score minimal
 };
 
-export function buildQuery(f?: SiteFilters) {
-  if (!f) return "";
-  const u = new URLSearchParams();
-  if (f.q) u.set("q", f.q);
-  if (f.kind) u.set("kind", f.kind);
-  if (f.region) u.set("region", f.region);
-  if (f.department) u.set("department", f.department);
-  if (f.commune) u.set("commune", f.commune);
-  if (typeof f.scoreMin === "number") u.set("scoreMin", String(f.scoreMin));
-  if (f.bbox) u.set("bbox", f.bbox.join(","));
-  return u.toString();
+export const defaultFilters: SiteFilters = {
+  q: '',
+  kind: '',
+  region: '',
+  departement: '',
+  commune: '',
+  minScore: 0,
+};
+
+export function normalize(str: unknown) {
+  return String(str ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '');
 }
 
-export async function fetchSites(filters?: SiteFilters): Promise<Feature[]> {
-  const qs = buildQuery(filters);
-  const url = qs ? `/api/sites?${qs}` : "/api/sites";
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
-
-export async function fetchMeta() {
-  const res = await fetch("/api/sites?meta=1", { cache: "no-store" });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json() as Promise<{
-    count: number;
-    regions: string[];
-    departments: string[];
-    communes: string[];
-    kinds: string[];
-    updatedAt: string;
-  }>;
+export function matchFilters(f: SiteFeature, filters: SiteFilters): boolean {
+  const p = f.properties || {};
+  const q = normalize(filters.q);
+  if (q) {
+    const hay = normalize([p.name, p.address, p.kind, p.region, p.departement, p.commune].join(' '));
+    if (!hay.includes(q)) return false;
+  }
+  if (filters.kind && normalize(p.kind) !== normalize(filters.kind)) return false;
+  if (filters.region && normalize(p.region) !== normalize(filters.region)) return false;
+  if (filters.departement && normalize(p.departement) !== normalize(filters.departement)) return false;
+  if (filters.commune && normalize(p.commune) !== normalize(filters.commune)) return false;
+  if (typeof filters.minScore === 'number') {
+    const s = Number(p.score ?? 0);
+    if (Number.isFinite(filters.minScore) && s < filters.minScore) return false;
+  }
+  return true;
 }
