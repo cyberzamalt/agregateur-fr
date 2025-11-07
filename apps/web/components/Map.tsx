@@ -2,11 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, LayersControl } from 'react-leaflet';
-import type { GeoJSON } from 'geojson';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-// Icône Leaflet (URLs CDN pour éviter les soucis de bundling)
+// --- Icône Leaflet (CDN) ---
 const markerIcon = new L.Icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -16,9 +15,10 @@ const markerIcon = new L.Icon({
   shadowSize: [41, 41],
 });
 
+// --- Types locaux (pas d'import 'geojson') ---
 type SiteFeature = {
   type: 'Feature';
-  geometry: { type: 'Point'; coordinates: [number, number] }; // [lon, lat] (GeoJSON)
+  geometry: { type: 'Point'; coordinates: [number, number] }; // GeoJSON: [lon, lat]
   properties: {
     id: string;
     name: string;
@@ -28,11 +28,7 @@ type SiteFeature = {
     score?: number;
   };
 };
-
-type FC = {
-  type: 'FeatureCollection';
-  features: SiteFeature[];
-};
+type FeatureCollection = { type: 'FeatureCollection'; features: SiteFeature[] };
 
 export default function Map() {
   const [features, setFeatures] = useState<SiteFeature[]>([]);
@@ -41,13 +37,17 @@ export default function Map() {
     (async () => {
       try {
         const res = await fetch('/sites.geojson', { cache: 'no-store' });
-        const raw = (await res.json()) as GeoJSON | SiteFeature[] | FC;
-        let feats: SiteFeature[] = [];
+        const data: unknown = await res.json();
 
-        if (Array.isArray(raw)) {
-          feats = raw as SiteFeature[];
-        } else if ((raw as FC).type === 'FeatureCollection') {
-          feats = (raw as FC).features;
+        let feats: SiteFeature[] = [];
+        if (Array.isArray(data)) {
+          feats = data as SiteFeature[];
+        } else if (
+          data &&
+          (data as FeatureCollection).type === 'FeatureCollection' &&
+          Array.isArray((data as FeatureCollection).features)
+        ) {
+          feats = (data as FeatureCollection).features;
         }
 
         setFeatures(
@@ -59,26 +59,23 @@ export default function Map() {
               typeof f.geometry.coordinates[1] === 'number'
           )
         );
-      } catch {
+      } catch (e) {
+        console.error('Erreur chargement sites.geojson', e);
         setFeatures([]);
       }
     })();
   }, []);
 
-  // Centre auto (France par défaut si pas de données)
+  // Centre auto (moyenne) ou France par défaut
   const center = useMemo<[number, number]>(() => {
-    if (features.length) {
-      const lats: number[] = [];
-      const lons: number[] = [];
-      features.forEach(f => {
-        const [lon, lat] = f.geometry.coordinates;
-        lats.push(lat);
-        lons.push(lon);
-      });
-      const avg = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length;
-      return [avg(lats), avg(lons)];
-    }
-    return [46.5, 2.5];
+    if (!features.length) return [46.5, 2.5];
+    let latSum = 0, lonSum = 0;
+    features.forEach(f => {
+      const [lon, lat] = f.geometry.coordinates;
+      latSum += lat;
+      lonSum += lon;
+    });
+    return [latSum / features.length, lonSum / features.length];
   }, [features]);
 
   return (
@@ -92,7 +89,6 @@ export default function Map() {
           border: '1px solid #333',
         }}
       >
-        {/* casts « as any » pour éviter les erreurs de types stricts côté CI */}
         <MapContainer center={center as any} zoom={6} style={{ width: '100%', height: '100%' }}>
           <LayersControl position="topright">
             <LayersControl.BaseLayer checked name="Standard (OSM)">
@@ -123,9 +119,7 @@ export default function Map() {
         </MapContainer>
       </div>
 
-      <div style={{ marginTop: 8, fontSize: 13, opacity: 0.8 }}>
-        Résultats : {features.length}
-      </div>
+      <div style={{ marginTop: 8, fontSize: 13, opacity: 0.8 }}>Résultats : {features.length}</div>
     </div>
   );
 }
