@@ -1,0 +1,20 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[2.3522,48.8566]},
+      "properties":{"id":"ex-paris-01","name":"Dépôt technique désaffecté","kind":"friche industrielle","region":"Île-de-France","departement":"Paris","commune":"Paris","address":"Quai de Bercy","score":3.5}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[5.7245,45.1885]},
+      "properties":{"id":"ex-grenoble-01","name":"Usine hydro ancienne","kind":"industriel","region":"Auvergne-Rhône-Alpes","departement":"Isère","commune":"Grenoble","address":"Avenue des Martyrs","score":4.0}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[-1.5536,47.2184]},
+      "properties":{"id":"ex-nantes-01","name":"Entrepôt portuaire abandonné","kind":"portuaire","region":"Pays de la Loire","departement":"Loire-Atlantique","commune":"Nantes","address":"Quai des Antilles","score":3.0}
+    }
+  ]
+}
