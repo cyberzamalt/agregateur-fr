@@ -7,8 +7,8 @@ export type SiteFeature = {
     name: string;
     kind?: string;
     region?: string;
-    departement?: string; // FR
-    commune?: string;     // FR
+    departement?: string;
+    commune?: string;
     address?: string;
     score?: number;
   };
@@ -31,6 +31,14 @@ export const defaultFilters: SiteFilters = {
   commune: 'tous',
   scoreMin: 0,
 };
+
+function pickFirst(obj: any, keys: string[], fallback = ''): string {
+  for (const k of keys) {
+    const v = obj?.[k];
+    if (typeof v === 'string' && v.trim()) return v.trim();
+  }
+  return fallback;
+}
 
 function uniq(list: (string | undefined)[]) {
   return Array.from(new Set(list.filter(Boolean) as string[])).sort((a, b) =>
@@ -58,14 +66,40 @@ export async function loadSites(): Promise<SiteFeature[]> {
     )
     .map((f) => {
       const p: any = f.properties ?? {};
-      const norm = {
-        ...p,
-        departement: p.departement ?? p.department ?? '',
-        commune: p.commune ?? p.city ?? '',
-        address: p.address ?? '',
+
+      // Normalisation large pour couvrir plusieurs jeux de clés
+      const region = pickFirst(p, ['region', 'Region', 'state', 'admin1', 'region_name']);
+      const departement = pickFirst(p, [
+        'departement',
+        'department',
+        'dep',
+        'dept',
+        'department_name',
+        'admin2',
+        'codeDepartement',
+      ]);
+      const commune = pickFirst(p, ['commune', 'city', 'town', 'village', 'municipality', 'locality']);
+      const address = pickFirst(p, ['address', 'adresse', 'addr', 'formatted_address']);
+
+      return {
+        ...f,
+        properties: {
+          id: p.id ?? cryptoRandomId(),
+          name: p.name ?? 'Sans nom',
+          kind: p.kind,
+          region,
+          departement,
+          commune,
+          address,
+          score: typeof p.score === 'number' ? p.score : undefined,
+        },
       };
-      return { ...f, properties: norm };
     });
+}
+
+function cryptoRandomId() {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return (crypto as any).randomUUID();
+  return 'id_' + Math.random().toString(36).slice(2);
 }
 
 export function applyFilters(features: SiteFeature[], filters: SiteFilters): SiteFeature[] {
@@ -82,8 +116,9 @@ export function applyFilters(features: SiteFeature[], filters: SiteFilters): Sit
     if (c && p.commune !== c) return false;
     if (p.score != null && p.score < s) return false;
     if (q) {
-      const hay =
-        `${p.name ?? ''} ${p.kind ?? ''} ${p.address ?? ''} ${p.region ?? ''} ${p.departement ?? ''} ${p.commune ?? ''}`.toLowerCase();
+      const hay = `${p.name ?? ''} ${p.kind ?? ''} ${p.address ?? ''} ${p.region ?? ''} ${p.departement ?? ''} ${
+        p.commune ?? ''
+      }`.toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
@@ -92,11 +127,13 @@ export function applyFilters(features: SiteFeature[], filters: SiteFilters): Sit
 
 export function buildOptions(features: SiteFeature[], filters: SiteFilters) {
   const regions = uniq(features.map((f) => f.properties?.region));
+
   const deps = uniq(
     features
       .filter((f) => !filters.region || filters.region === 'tous' || f.properties?.region === filters.region)
       .map((f) => f.properties?.departement)
   );
+
   const communes = uniq(
     features
       .filter((f) => {
