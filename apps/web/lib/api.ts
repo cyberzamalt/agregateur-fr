@@ -7,8 +7,8 @@ export type SiteFeature = {
     name: string;
     kind?: string;
     region?: string;
-    departement?: string;
-    commune?: string;
+    departement?: string; // FR
+    commune?: string;     // FR
     address?: string;
     score?: number;
   };
@@ -17,44 +17,90 @@ export type SiteFeature = {
 export type FeatureCollection = { type: 'FeatureCollection'; features: SiteFeature[] };
 
 export type SiteFilters = {
-  q: string;                 // recherche nom/adresse (contient)
-  kind: string;              // type exact (ou '')
-  region: string;            // région exacte (ou '')
-  departement: string;       // département exact (ou '')
-  commune: string;           // commune exacte (ou '')
-  minScore: number;          // score minimal
+  q?: string;
+  region?: string | 'tous';
+  departement?: string | 'tous';
+  commune?: string | 'tous';
+  scoreMin?: number; // default 0
 };
 
-export const defaultFilters: SiteFilters = {
-  q: '',
-  kind: '',
-  region: '',
-  departement: '',
-  commune: '',
-  minScore: 0,
-};
-
-export function normalize(str: unknown) {
-  return String(str ?? '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '');
+function uniq(list: (string | undefined)[]) {
+  return Array.from(new Set(list.filter(Boolean) as string[])).sort((a, b) =>
+    a.localeCompare(b, 'fr', { sensitivity: 'base' })
+  );
 }
 
-export function matchFilters(f: SiteFeature, filters: SiteFilters): boolean {
-  const p = f.properties || {};
-  const q = normalize(filters.q);
-  if (q) {
-    const hay = normalize([p.name, p.address, p.kind, p.region, p.departement, p.commune].join(' '));
-    if (!hay.includes(q)) return false;
-  }
-  if (filters.kind && normalize(p.kind) !== normalize(filters.kind)) return false;
-  if (filters.region && normalize(p.region) !== normalize(filters.region)) return false;
-  if (filters.departement && normalize(p.departement) !== normalize(filters.departement)) return false;
-  if (filters.commune && normalize(p.commune) !== normalize(filters.commune)) return false;
-  if (typeof filters.minScore === 'number') {
-    const s = Number(p.score ?? 0);
-    if (Number.isFinite(filters.minScore) && s < filters.minScore) return false;
-  }
-  return true;
+export async function loadSites(): Promise<SiteFeature[]> {
+  const res = await fetch('/sites.geojson', { cache: 'no-store' });
+  const data = await res.json();
+
+  const feats: SiteFeature[] = Array.isArray(data)
+    ? (data as SiteFeature[])
+    : data?.type === 'FeatureCollection'
+    ? (data.features as SiteFeature[])
+    : [];
+
+  // Filtre robustesse + normalisation des propriétés FR
+  return feats
+    .filter(
+      (f) =>
+        f?.geometry?.type === 'Point' &&
+        Array.isArray(f.geometry.coordinates) &&
+        typeof f.geometry.coordinates[0] === 'number' &&
+        typeof f.geometry.coordinates[1] === 'number'
+    )
+    .map((f) => {
+      const p: any = f.properties ?? {};
+      const normalised = {
+        ...p,
+        // accepte "department"/"city" si jamais présents
+        departement: p.departement ?? p.department ?? '',
+        commune: p.commune ?? p.city ?? '',
+        address: p.address ?? '',
+      };
+      return { ...f, properties: normalised };
+    });
+}
+
+export function applyFilters(features: SiteFeature[], filters: SiteFilters): SiteFeature[] {
+  const q = (filters.q ?? '').trim().toLowerCase();
+  const r = filters.region && filters.region !== 'tous' ? filters.region : undefined;
+  const d = filters.departement && filters.departement !== 'tous' ? filters.departement : undefined;
+  const c = filters.commune && filters.commune !== 'tous' ? filters.commune : undefined;
+  const s = typeof filters.scoreMin === 'number' ? filters.scoreMin! : 0;
+
+  return features.filter((f) => {
+    const p = f.properties || {};
+    if (r && p.region !== r) return false;
+    if (d && p.departement !== d) return false;
+    if (c && p.commune !== c) return false;
+    if (p.score != null && p.score < s) return false;
+    if (q) {
+      const hay =
+        `${p.name ?? ''} ${p.kind ?? ''} ${p.address ?? ''} ${p.region ?? ''} ${p.departement ?? ''} ${p.commune ?? ''}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+export function buildOptions(features: SiteFeature[], filters: SiteFilters) {
+  const regions = uniq(features.map((f) => f.properties?.region));
+  const deps = uniq(
+    features
+      .filter((f) => !filters.region || filters.region === 'tous' || f.properties?.region === filters.region)
+      .map((f) => f.properties?.departement)
+  );
+  const communes = uniq(
+    features
+      .filter((f) => {
+        if (filters.region && filters.region !== 'tous' && f.properties?.region !== filters.region) return false;
+        if (filters.departement && filters.departement !== 'tous' && f.properties?.departement !== filters.departement)
+          return false;
+        return true;
+      })
+      .map((f) => f.properties?.commune)
+  );
+
+  return { regions, deps, communes };
 }
