@@ -1,105 +1,124 @@
-'use client';
+"use client";
 
-import React from 'react';
-
-export type FiltersState = {
-  q: string;
-  kind: string;   // 'tous' ou valeur précise
-  region: string; // 'toutes' ou valeur précise
-  minScore: number;
-};
+import { useEffect, useMemo, useState } from "react";
+import { SiteFilters } from "../lib/api";
+import { fetchMeta } from "../lib/api";
 
 type Props = {
-  state: FiltersState;
-  kinds: string[];
-  regions: string[];
-  onChange: (next: FiltersState) => void;
+  value: SiteFilters;
+  onChange: (v: SiteFilters) => void;
 };
 
-export default function Filters({ state, kinds, regions, onChange }: Props) {
-  const set = <K extends keyof FiltersState>(k: K, v: FiltersState[K]) =>
-    onChange({ ...state, [k]: v });
+export default function Filters({ value, onChange }: Props) {
+  const [loading, setLoading] = useState(false);
+  const [meta, setMeta] = useState<{
+    regions: string[];
+    departments: string[];
+    communes: string[];
+    kinds: string[];
+  }>({ regions: [], departments: [], communes: [], kinds: [] });
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      try {
+        const m = await fetchMeta();
+        setMeta({
+          regions: m.regions || [],
+          departments: m.departments || [],
+          communes: m.communes || [],
+          kinds: m.kinds || [],
+        });
+      } catch {
+        // silencieux
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  function upd(patch: Partial<SiteFilters>) {
+    onChange({ ...value, ...patch });
+  }
+
+  const scoreOptions = useMemo(() => [0, 1, 2, 3, 4, 5], []);
 
   return (
-    <div
-      style={{
-        display: 'grid',
-        gap: 12,
-        padding: 12,
-        border: '1px solid #333',
-        borderRadius: 10,
-      }}
-    >
-      <div style={{ display: 'grid', gap: 8 }}>
-        <label style={{ fontSize: 13, opacity: 0.85 }}>Recherche</label>
-        <input
-          value={state.q}
-          onChange={(e) => set('q', e.target.value)}
-          placeholder="Nom, type, région..."
-          style={{
-            padding: '10px 12px',
-            borderRadius: 8,
-            border: '1px solid #333',
-            background: '#0f1116',
-            color: '#f2f3f5',
-            outline: 'none',
-          }}
-        />
-      </div>
+    <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", marginBottom: 12 }}>
+      <input
+        placeholder="Recherche (nom / adresse)"
+        value={value.q || ""}
+        onChange={(e) => upd({ q: e.target.value })}
+        style={{ padding: 8, borderRadius: 8, border: "1px solid #333", background: "#0b0b0b", color: "#fff" }}
+      />
 
-      <div style={{ display: 'grid', gap: 8 }}>
-        <label style={{ fontSize: 13, opacity: 0.85 }}>Type</label>
-        <select
-          value={state.kind}
-          onChange={(e) => set('kind', e.target.value)}
-          style={{
-            padding: '10px 12px',
-            borderRadius: 8,
-            border: '1px solid #333',
-            background: '#0f1116',
-            color: '#f2f3f5',
-          }}
-        >
-          <option value="tous">Tous</option>
-          {kinds.map((k) => (
-            <option key={k} value={k}>{k}</option>
-          ))}
-        </select>
-      </div>
+      <select
+        value={value.kind || ""}
+        onChange={(e) => upd({ kind: e.target.value || undefined })}
+        disabled={loading}
+        style={{ padding: 8, borderRadius: 8, border: "1px solid #333", background: "#0b0b0b", color: "#fff" }}
+      >
+        <option value="">Type (tous)</option>
+        {meta.kinds.map((k) => (
+          <option key={k} value={k}>
+            {k}
+          </option>
+        ))}
+      </select>
 
-      <div style={{ display: 'grid', gap: 8 }}>
-        <label style={{ fontSize: 13, opacity: 0.85 }}>Région</label>
-        <select
-          value={state.region}
-          onChange={(e) => set('region', e.target.value)}
-          style={{
-            padding: '10px 12px',
-            borderRadius: 8,
-            border: '1px solid #333',
-            background: '#0f1116',
-            color: '#f2f3f5',
-          }}
-        >
-          <option value="toutes">Toutes</option>
-          {regions.map((r) => (
-            <option key={r} value={r}>{r}</option>
-          ))}
-        </select>
-      </div>
+      <select
+        value={value.region || ""}
+        onChange={(e) => upd({ region: e.target.value || undefined, department: undefined, commune: undefined })}
+        disabled={loading}
+        style={{ padding: 8, borderRadius: 8, border: "1px solid #333", background: "#0b0b0b", color: "#fff" }}
+      >
+        <option value="">Région (toutes)</option>
+        {meta.regions.map((r) => (
+          <option key={r} value={r}>
+            {r}
+          </option>
+        ))}
+      </select>
 
-      <div style={{ display: 'grid', gap: 6 }}>
-        <label style={{ fontSize: 13, opacity: 0.85 }}>
-          Score minimum : <strong>{state.minScore}</strong>
-        </label>
-        <input
-          type="range"
-          min={0}
-          max={5}
-          step={0.1}
-          value={state.minScore}
-          onChange={(e) => set('minScore', Number(e.target.value))}
-        />
-      </div>
+      <select
+        value={value.department || ""}
+        onChange={(e) => upd({ department: e.target.value || undefined, commune: undefined })}
+        disabled={loading}
+        style={{ padding: 8, borderRadius: 8, border: "1px solid #333", background: "#0b0b0b", color: "#fff" }}
+      >
+        <option value="">Département (tous)</option>
+        {meta.departments.map((d) => (
+          <option key={d} value={d}>
+            {d}
+          </option>
+        ))}
+      </select>
+
+      <select
+        value={value.commune || ""}
+        onChange={(e) => upd({ commune: e.target.value || undefined })}
+        disabled={loading}
+        style={{ padding: 8, borderRadius: 8, border: "1px solid #333", background: "#0b0b0b", color: "#fff" }}
+      >
+        <option value="">Commune (toutes)</option>
+        {meta.communes.map((c) => (
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+      </select>
+
+      <select
+        value={String(value.scoreMin ?? 0)}
+        onChange={(e) => upd({ scoreMin: Number(e.target.value) })}
+        style={{ padding: 8, borderRadius: 8, border: "1px solid #333", background: "#0b0b0b", color: "#fff" }}
+      >
+        {scoreOptions.map((s) => (
+          <option key={s} value={s}>
+            Score ≥ {s}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
