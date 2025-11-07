@@ -1,20 +1,24 @@
-"use client";
+// apps/web/app/sites/page.tsx
+'use client';
 
-import dynamic from "next/dynamic";
-import { useState } from "react";
-import Filters from "../../components/Filters";
-import type { SiteFilters } from "../../lib/api";
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
-const ClientMap = dynamic(() => import("../../components/Map"), { ssr: false });
+import { useState } from 'react';
+import Filters from '../../components/Filters';
+import Map from '../../components/Map';
+import { defaultFilters, type SiteFilters } from '../../lib/api';
 
 export default function SitesPage() {
-  const [filters, setFilters] = useState<SiteFilters>({ scoreMin: 0 });
+  const [filters, setFilters] = useState<SiteFilters>(defaultFilters);
 
   return (
-    <main style={{ padding: "24px 16px" }}>
-      <h1 style={{ fontSize: 28, fontWeight: 700, margin: "0 0 12px" }}>Sites d'Urbex</h1>
+    <main style={{ padding: '24px 16px' }}>
+      <h1 style={{ fontSize: 28, fontWeight: 700, margin: '0 0 12px' }}>Sites d'Urbex</h1>
+
       <Filters value={filters} onChange={setFilters} />
-      <ClientMap filters={filters} />
+
+      <Map filters={filters} />
     </main>
   );
 }
