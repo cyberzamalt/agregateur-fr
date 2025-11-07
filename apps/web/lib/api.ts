@@ -21,7 +21,15 @@ export type SiteFilters = {
   region?: string | 'tous';
   departement?: string | 'tous';
   commune?: string | 'tous';
-  scoreMin?: number; // default 0
+  scoreMin?: number;
+};
+
+export const defaultFilters: SiteFilters = {
+  q: '',
+  region: 'tous',
+  departement: 'tous',
+  commune: 'tous',
+  scoreMin: 0,
 };
 
 function uniq(list: (string | undefined)[]) {
@@ -40,7 +48,6 @@ export async function loadSites(): Promise<SiteFeature[]> {
     ? (data.features as SiteFeature[])
     : [];
 
-  // Filtre robustesse + normalisation des propriétés FR
   return feats
     .filter(
       (f) =>
@@ -51,14 +58,13 @@ export async function loadSites(): Promise<SiteFeature[]> {
     )
     .map((f) => {
       const p: any = f.properties ?? {};
-      const normalised = {
+      const norm = {
         ...p,
-        // accepte "department"/"city" si jamais présents
         departement: p.departement ?? p.department ?? '',
         commune: p.commune ?? p.city ?? '',
         address: p.address ?? '',
       };
-      return { ...f, properties: normalised };
+      return { ...f, properties: norm };
     });
 }
 
