@@ -1,94 +1,104 @@
 'use client';
 
-import { useMemo } from 'react';
+import React from 'react';
 
-export type FilterState = {
-  kind: string;     // '', 'urbex-village', ...
-  region: string;   // '', 'Île-de-France', ...
-  minScore: number; // 0..5
-  sort: 'score_desc' | 'score_asc' | 'name';
+export type FiltersState = {
+  q: string;
+  kind: string;   // 'tous' ou valeur précise
+  region: string; // 'toutes' ou valeur précise
+  minScore: number;
 };
 
 type Props = {
+  state: FiltersState;
   kinds: string[];
   regions: string[];
-  value: FilterState;
-  onChange: (next: FilterState) => void;
-  resultsCount: number;
+  onChange: (next: FiltersState) => void;
 };
 
-function Stars({ value }: { value: number }) {
-  const v = Math.max(0, Math.min(5, value));
-  const full = '★'.repeat(Math.floor(v));
-  const empty = '☆'.repeat(5 - Math.floor(v));
-  return <span aria-label={`${v}/5`} title={`${v}/5`} style={{ letterSpacing: 1 }}>{full}{empty}</span>;
-}
-
-export default function Filters({ kinds, regions, value, onChange, resultsCount }: Props) {
-  const kindOpts = useMemo(() => ['', ...kinds.sort()], [kinds]);
-  const regionOpts = useMemo(() => ['', ...regions.sort()], [regions]);
+export default function Filters({ state, kinds, regions, onChange }: Props) {
+  const set = <K extends keyof FiltersState>(k: K, v: FiltersState[K]) =>
+    onChange({ ...state, [k]: v });
 
   return (
-    <div style={{
-      maxWidth: 980, margin: '12px auto 16px', padding: '12px 14px',
-      border: '1px solid #333', borderRadius: 12, background: 'rgba(255,255,255,0.03)'
-    }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12 }}>
-        {/* Type */}
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={{ fontSize: 12, opacity: .7 }}>Type</span>
-          <select
-            value={value.kind}
-            onChange={(e) => onChange({ ...value, kind: e.target.value })}
-            style={{ padding: '8px 10px', borderRadius: 8, background: '#141414', color: 'white', border: '1px solid #333' }}
-          >
-            {kindOpts.map(k => <option key={k} value={k}>{k || 'Tous'}</option>)}
-          </select>
-        </label>
-
-        {/* Région */}
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={{ fontSize: 12, opacity: .7 }}>Région</span>
-          <select
-            value={value.region}
-            onChange={(e) => onChange({ ...value, region: e.target.value })}
-            style={{ padding: '8px 10px', borderRadius: 8, background: '#141414', color: 'white', border: '1px solid #333' }}
-          >
-            {regionOpts.map(r => <option key={r} value={r}>{r || 'Toutes'}</option>)}
-          </select>
-        </label>
-
-        {/* Note minimale */}
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={{ fontSize: 12, opacity: .7 }}>Note minimale</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <input
-              type="range" min={0} max={5} step={0.5}
-              value={value.minScore}
-              onChange={(e) => onChange({ ...value, minScore: Number(e.target.value) })}
-              style={{ flex: 1 }}
-            />
-            <Stars value={value.minScore} />
-          </div>
-        </label>
-
-        {/* Tri */}
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={{ fontSize: 12, opacity: .7 }}>Tri</span>
-          <select
-            value={value.sort}
-            onChange={(e) => onChange({ ...value, sort: e.target.value as Props['value']['sort'] })}
-            style={{ padding: '8px 10px', borderRadius: 8, background: '#141414', color: 'white', border: '1px solid #333' }}
-          >
-            <option value="score_desc">Note ↓</option>
-            <option value="score_asc">Note ↑</option>
-            <option value="name">Nom A→Z</option>
-          </select>
-        </label>
+    <div
+      style={{
+        display: 'grid',
+        gap: 12,
+        padding: 12,
+        border: '1px solid #333',
+        borderRadius: 10,
+      }}
+    >
+      <div style={{ display: 'grid', gap: 8 }}>
+        <label style={{ fontSize: 13, opacity: 0.85 }}>Recherche</label>
+        <input
+          value={state.q}
+          onChange={(e) => set('q', e.target.value)}
+          placeholder="Nom, type, région..."
+          style={{
+            padding: '10px 12px',
+            borderRadius: 8,
+            border: '1px solid #333',
+            background: '#0f1116',
+            color: '#f2f3f5',
+            outline: 'none',
+          }}
+        />
       </div>
 
-      <div style={{ marginTop: 10, fontSize: 13, opacity: .8 }}>
-        Résultats : <strong>{resultsCount}</strong>
+      <div style={{ display: 'grid', gap: 8 }}>
+        <label style={{ fontSize: 13, opacity: 0.85 }}>Type</label>
+        <select
+          value={state.kind}
+          onChange={(e) => set('kind', e.target.value)}
+          style={{
+            padding: '10px 12px',
+            borderRadius: 8,
+            border: '1px solid #333',
+            background: '#0f1116',
+            color: '#f2f3f5',
+          }}
+        >
+          <option value="tous">Tous</option>
+          {kinds.map((k) => (
+            <option key={k} value={k}>{k}</option>
+          ))}
+        </select>
+      </div>
+
+      <div style={{ display: 'grid', gap: 8 }}>
+        <label style={{ fontSize: 13, opacity: 0.85 }}>Région</label>
+        <select
+          value={state.region}
+          onChange={(e) => set('region', e.target.value)}
+          style={{
+            padding: '10px 12px',
+            borderRadius: 8,
+            border: '1px solid #333',
+            background: '#0f1116',
+            color: '#f2f3f5',
+          }}
+        >
+          <option value="toutes">Toutes</option>
+          {regions.map((r) => (
+            <option key={r} value={r}>{r}</option>
+          ))}
+        </select>
+      </div>
+
+      <div style={{ display: 'grid', gap: 6 }}>
+        <label style={{ fontSize: 13, opacity: 0.85 }}>
+          Score minimum : <strong>{state.minScore}</strong>
+        </label>
+        <input
+          type="range"
+          min={0}
+          max={5}
+          step={0.1}
+          value={state.minScore}
+          onChange={(e) => set('minScore', Number(e.target.value))}
+        />
       </div>
     </div>
   );
