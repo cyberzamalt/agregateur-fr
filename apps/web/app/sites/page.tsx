@@ -5,19 +5,13 @@ export const revalidate = 0;
 import nextDynamic from 'next/dynamic';
 import { useEffect, useMemo, useState } from 'react';
 import Filters from '../../components/Filters';
-import { loadSites, applyFilters, type SiteFilters, type SiteFeature } from '../../lib/api';
+import { loadSites, applyFilters, defaultFilters, type SiteFilters, type SiteFeature } from '../../lib/api';
 
 const ClientMap = nextDynamic(() => import('../../components/Map'), { ssr: false });
 
 export default function SitesPage() {
   const [all, setAll] = useState<SiteFeature[]>([]);
-  const [filters, setFilters] = useState<SiteFilters>({
-    q: '',
-    region: 'tous',
-    departement: 'tous',
-    commune: 'tous',
-    scoreMin: 0,
-  });
+  const [filters, setFilters] = useState<SiteFilters>(defaultFilters);
 
   useEffect(() => {
     loadSites().then(setAll).catch(() => setAll([]));
