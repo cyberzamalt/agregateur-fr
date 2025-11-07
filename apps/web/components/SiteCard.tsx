@@ -1,5 +1,6 @@
 // apps/web/components/SiteCard.tsx
 import type { SiteFeature } from '../lib/api';
+import RatingStars from './RatingStars';
 
 export default function SiteCard({ f }: { f: SiteFeature }) {
   const p = f.properties || {};
@@ -11,7 +12,11 @@ export default function SiteCard({ f }: { f: SiteFeature }) {
       <div style={{ opacity: 0.8, fontSize: 13 }}>
         {p.commune ? `${p.commune}, ` : ''}{p.departement ? `${p.departement}, ` : ''}{p.region ?? ''}
       </div>
-      {typeof p.score === 'number' && <div style={{ marginTop: 6 }}>Score : {p.score.toFixed(1)}</div>}
+      {typeof p.score === 'number' && (
+        <div style={{ marginTop: 6 }}>
+          <RatingStars value={p.score} /> <span style={{ opacity: 0.7, fontSize: 12 }}>({p.score.toFixed(1)})</span>
+        </div>
+      )}
     </div>
   );
 }
