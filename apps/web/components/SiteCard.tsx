@@ -1,28 +1,17 @@
-"use client";
+// apps/web/components/SiteCard.tsx
+import type { SiteFeature } from '../lib/api';
 
-import RatingStars from "./RatingStars";
-import type { Feature } from "../lib/api";
-
-export default function SiteCard({ f }: { f: Feature }) {
+export default function SiteCard({ f }: { f: SiteFeature }) {
   const p = f.properties || {};
-  const [lon, lat] = f.geometry?.coordinates || [];
-  const coord = Number.isFinite(lat) && Number.isFinite(lon) ? `${lat.toFixed(5)}, ${lon.toFixed(5)}` : "";
-
   return (
-    <div style={{ border: "1px solid #333", borderRadius: 12, padding: 12, background: "#0b0b0b" }}>
-      <div style={{ fontWeight: 700 }}>{p.name || "Sans nom"}</div>
-      <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>{p.address || coord}</div>
-      <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>
-        {(p.region || p.department || p.commune) && (
-          <>
-            {[p.commune, p.department, p.region].filter(Boolean).join(" • ")}
-          </>
-        )}
+    <div style={{ border: '1px solid #333', borderRadius: 10, padding: 10, background: '#121214' }}>
+      <div style={{ fontWeight: 700 }}>{p.name}</div>
+      {p.kind && <div style={{ opacity: 0.8, fontSize: 13 }}>{p.kind}</div>}
+      {p.address && <div style={{ opacity: 0.8, fontSize: 13 }}>📍 {p.address}</div>}
+      <div style={{ opacity: 0.8, fontSize: 13 }}>
+        {p.commune ? `${p.commune}, ` : ''}{p.departement ? `${p.departement}, ` : ''}{p.region ?? ''}
       </div>
-      <div style={{ marginTop: 6 }}>
-        <RatingStars value={typeof p.score === "number" ? p.score : 0} />
-      </div>
-      {p.kind && <div style={{ fontSize: 12, opacity: 0.8, marginTop: 6 }}>Type : {p.kind}</div>}
+      {typeof p.score === 'number' && <div style={{ marginTop: 6 }}>Score : {p.score.toFixed(1)}</div>}
     </div>
   );
 }
