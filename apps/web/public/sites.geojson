@@ -2,64 +2,164 @@
   "type": "FeatureCollection",
   "features": [
     {
-      "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [2.472, 49.03] },
-      "properties": {
-        "id": "goussainville-vieux-pays",
-        "name": "Goussainville — Vieux-Pays (village fantôme)",
-        "kind": "urbex-village",
-        "region": "Île-de-France",
-        "dept_code": "95",
-        "score": 4.2
-      }
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[2.3522,48.8566]},
+      "properties":{"id":"s-paris-01","name":"Dépôt technique désaffecté","kind":"friche industrielle","region":"Île-de-France","departement":"Paris","commune":"Paris","address":"Quai de Bercy","score":3.7}
     },
     {
-      "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [2.347, 48.906] },
-      "properties": {
-        "id": "saint-denis-usine",
-        "name": "Ancienne usine – Saint-Denis",
-        "kind": "friche-industrielle",
-        "region": "Île-de-France",
-        "dept_code": "93",
-        "score": 3.7
-      }
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[2.357,48.936]},
+      "properties":{"id":"s-stdenis-01","name":"Ancien entrepôt ferroviaire","kind":"industriel","region":"Île-de-France","departement":"Seine-Saint-Denis","commune":"Saint-Denis","address":"Rue du Landy","score":3.9}
     },
     {
-      "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [6.022, 47.266] },
-      "properties": {
-        "id": "hodierotte-besancon",
-        "name": "Hôdierotte – Besançon (friche)",
-        "kind": "friche-industrielle",
-        "region": "Bourgogne-Franche-Comté",
-        "dept_code": "25",
-        "score": 4.0
-      }
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[2.393,48.894]},
+      "properties":{"id":"s-pantin-01","name":"Brasserie abandonnée","kind":"friche industrielle","region":"Île-de-France","departement":"Seine-Saint-Denis","commune":"Pantin","address":"Canal de l’Ourcq","score":3.4}
     },
     {
-      "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [6.246, 49.115] },
-      "properties": {
-        "id": "base-217-briey",
-        "name": "Base aérienne 217 – zone désaffectée",
-        "kind": "militaire",
-        "region": "Grand Est",
-        "dept_code": "54",
-        "score": 3.6
-      }
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[4.8357,45.764]},
+      "properties":{"id":"s-lyon-01","name":"Hôpital désaffecté (annexe)","kind":"hôpital abandonné","region":"Auvergne-Rhône-Alpes","departement":"Rhône","commune":"Lyon","address":"Quartier de la Croix-Rousse","score":4.2}
     },
     {
-      "type": "Feature",
-      "geometry": { "type": "Point", "coordinates": [2.356, 44.946] },
-      "properties": {
-        "id": "decazeville-mine",
-        "name": "Ancienne mine – Decazeville",
-        "kind": "site minier",
-        "region": "Occitanie",
-        "dept_code": "12",
-        "score": 3.5
-      }
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[4.88,45.771]},
+      "properties":{"id":"s-villeurbanne-01","name":"Usine textile vide","kind":"industriel","region":"Auvergne-Rhône-Alpes","departement":"Rhône","commune":"Villeurbanne","address":"Bd du 11 Novembre","score":3.3}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[5.7245,45.1885]},
+      "properties":{"id":"s-grenoble-01","name":"Centrale hydro en friche","kind":"industriel","region":"Auvergne-Rhône-Alpes","departement":"Isère","commune":"Grenoble","address":"Avenue des Martyrs","score":4.0}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[5.3698,43.2965]},
+      "properties":{"id":"s-marseille-01","name":"Docks désaffectés","kind":"portuaire","region":"Provence-Alpes-Côte d'Azur","departement":"Bouches-du-Rhône","commune":"Marseille","address":"Joliette / Quai du Port","score":3.6}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[1.4442,43.6047]},
+      "properties":{"id":"s-toulouse-01","name":"Ancienne usine aéronautique","kind":"industriel","region":"Occitanie","departement":"Haute-Garonne","commune":"Toulouse","address":"Montaudran","score":4.1}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[3.8767,43.6119]},
+      "properties":{"id":"s-montpellier-01","name":"Clinique fermée","kind":"hôpital abandonné","region":"Occitanie","departement":"Hérault","commune":"Montpellier","address":"Quartier Aiguelongue","score":3.2}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[-0.5792,44.8378]},
+      "properties":{"id":"s-bordeaux-01","name":"Entrepôt vinicole vide","kind":"industriel","region":"Nouvelle-Aquitaine","departement":"Gironde","commune":"Bordeaux","address":"Quais de la Garonne","score":3.8}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[-1.6778,48.1173]},
+      "properties":{"id":"s-rennes-01","name":"Usine agroalimentaire en friche","kind":"friche industrielle","region":"Bretagne","departement":"Ille-et-Vilaine","commune":"Rennes","address":"Route de Lorient","score":3.1}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[-1.5536,47.2184]},
+      "properties":{"id":"s-nantes-01","name":"Entrepôt portuaire abandonné","kind":"portuaire","region":"Pays de la Loire","departement":"Loire-Atlantique","commune":"Nantes","address":"Île de Nantes / Quai des Antilles","score":3.5}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[1.099,49.443]},
+      "properties":{"id":"s-rouen-01","name":"Filature vide","kind":"industriel","region":"Normandie","departement":"Seine-Maritime","commune":"Rouen","address":"Rive droite","score":3.0}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[3.0573,50.6292]},
+      "properties":{"id":"s-lille-01","name":"Bâtiment gare de triage","kind":"gare désaffectée","region":"Hauts-de-France","departement":"Nord","commune":"Lille","address":"Faubourg de Béthune","score":3.9}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[2.833,50.433]},
+      "properties":{"id":"s-lens-01","name":"Ancienne fosse minière","kind":"mine","region":"Hauts-de-France","departement":"Pas-de-Calais","commune":"Lens","address":"Cité des Mines","score":4.3}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[7.7521,48.5734]},
+      "properties":{"id":"s-strasbourg-01","name":"Dépôt fluvial en friche","kind":"portuaire","region":"Grand Est","departement":"Bas-Rhin","commune":"Strasbourg","address":"Port du Rhin","score":3.4}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[7.3359,47.7508]},
+      "properties":{"id":"s-mulhouse-01","name":"Usine textile DMC (bât. annexe)","kind":"industriel","region":"Grand Est","departement":"Haut-Rhin","commune":"Mulhouse","address":"Proche canal du Rhône au Rhin","score":4.4}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[6.1844,48.6921]},
+      "properties":{"id":"s-nancy-01","name":"Sanatorium désaffecté","kind":"sanatorium","region":"Grand Est","departement":"Meurthe-et-Moselle","commune":"Nancy","address":"Forêt de Haye (proximité)","score":4.0}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[6.176,49.119]},
+      "properties":{"id":"s-metz-01","name":"Fort désaffecté","kind":"fort militaire","region":"Grand Est","departement":"Moselle","commune":"Metz","address":"Secteur Magny","score":3.8}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[6.02,47.24]},
+      "properties":{"id":"s-besancon-01","name":"Carrière souterraine","kind":"carrière","region":"Bourgogne-Franche-Comté","departement":"Doubs","commune":"Besançon","address":"Hors ville (colline)","score":3.6}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[5.0415,47.322]},
+      "properties":{"id":"s-dijon-01","name":"Silo ferroviaire abandonné","kind":"industriel","region":"Bourgogne-Franche-Comté","departement":"Côte-d'Or","commune":"Dijon","address":"Emprises SNCF","score":3.3}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[3.083,45.777]},
+      "properties":{"id":"s-clermont-01","name":"Bâtiment Michelin historique (inutilisé)","kind":"industriel","region":"Auvergne-Rhône-Alpes","departement":"Puy-de-Dôme","commune":"Clermont-Ferrand","address":"Bd Etienne Michelin","score":3.7}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[1.909,47.902]},
+      "properties":{"id":"s-orleans-01","name":"Caserne fermée","kind":"base militaire","region":"Centre-Val de Loire","departement":"Loiret","commune":"Orléans","address":"Faubourg Bannier","score":3.2}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[0.689,47.394]},
+      "properties":{"id":"s-tours-01","name":"Hôtel thermal abandonné","kind":"hôtel","region":"Centre-Val de Loire","departement":"Indre-et-Loire","commune":"Tours","address":"Bords de Loire (amont)","score":2.9}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[-0.556,47.478]},
+      "properties":{"id":"s-angers-01","name":"Ancienne conserverie","kind":"industriel","region":"Pays de la Loire","departement":"Maine-et-Loire","commune":"Angers","address":"Zone Saint-Serge","score":3.1}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[0.199,48.006]},
+      "properties":{"id":"s-lemans-01","name":"Piscine municipale fermée","kind":"piscine","region":"Pays de la Loire","departement":"Sarthe","commune":"Le Mans","address":"Quartier Gares","score":2.8}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[7.262,43.71]},
+      "properties":{"id":"s-nice-01","name":"Villa en ruine (colline)","kind":"manoir / villa","region":"Provence-Alpes-Côte d'Azur","departement":"Alpes-Maritimes","commune":"Nice","address":"Colline de Cimiez (env.)","score":3.0}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[4.807,43.949]},
+      "properties":{"id":"s-avignon-01","name":"Gare de marchandises désaffectée","kind":"gare désaffectée","region":"Provence-Alpes-Côte d'Azur","departement":"Vaucluse","commune":"Avignon","address":"Av. Pierre Sémard","score":3.5}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[5.93,43.125]},
+      "properties":{"id":"s-toulon-01","name":"Bunker côtier (WW2)","kind":"site militaire","region":"Provence-Alpes-Côte d'Azur","departement":"Var","commune":"Toulon","address":"Cap Brun (falaises)","score":4.1}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[2.895,42.698]},
+      "properties":{"id":"s-perpignan-01","name":"Usine fruitière fermée","kind":"industriel","region":"Occitanie","departement":"Pyrénées-Orientales","commune":"Perpignan","address":"Rive gauche Têt","score":2.7}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[-4.486,48.39]},
+      "properties":{"id":"s-brest-01","name":"Batterie côtière désaffectée","kind":"site militaire","region":"Bretagne","departement":"Finistère","commune":"Brest","address":"Pointe des Espagnols (secteur)","score":4.5}
+    },
+    {
+      "type":"Feature",
+      "geometry":{"type":"Point","coordinates":[-2.026,48.649]},
+      "properties":{"id":"s-stmalo-01","name":"Fortin de digue","kind":"site militaire","region":"Bretagne","departement":"Ille-et-Vilaine","commune":"Saint-Malo","address":"Digue du Sillon (proximité)","score":3.8}
     }
   ]
 }
