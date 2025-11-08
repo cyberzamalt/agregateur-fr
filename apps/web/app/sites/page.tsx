@@ -1,57 +1,37 @@
 // apps/web/app/sites/page.tsx
-'use client';
+"use client";
 
-// Pas de SSR ni de cache (Leaflet + filtres client)
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+import { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
+import Filters from "../../components/Filters";
+import type { SiteFilters, SiteFeature } from "../../lib/api";
 
-import { useEffect, useMemo, useState } from 'react';
-import Map from '../../components/Map';
-import Filters from '../../components/Filters';
-import type { SiteFeature, SiteFilters } from '../../lib/api';
-import { applyFilters, computeBounds, defaultFilters, fromAnyGeojson } from '../../lib/api';
+// Cette page est purement client (Leaflet + filtres)
+export const dynamic = "force-dynamic";
+export const revalidate = 0; // ✅ nombre ou false, jamais un objet
 
-async function fetchJson(url: string): Promise<any | null> {
-  try {
-    const res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
-}
+const ClientMap = dynamic(() => import("../../components/Map"), { ssr: false });
 
 export default function SitesPage() {
-  const [allFeatures, setAllFeatures] = useState<SiteFeature[]>([]);
-  const [filters, setFilters] = useState<SiteFilters>(defaultFilters);
+  const [filters, setFilters] = useState<SiteFilters>({
+    q: "",
+    type: "all",
+    region: "all",
+    department: "all",
+    commune: "all",
+    minScore: 0,
+  });
 
-  // Charge /sites.geojson + /urbex_extra.geojson (silencieux si 404)
-  useEffect(() => {
-    (async () => {
-      const a = await fetchJson('/sites.geojson');
-      const b = await fetchJson('/urbex_extra.geojson'); // optionnel
-      const A = fromAnyGeojson(a);
-      const B = fromAnyGeojson(b);
-      setAllFeatures([...A, ...B]);
-    })();
-  }, []);
-
-  const feats = useMemo(() => applyFilters(allFeatures, filters), [allFeatures, filters]);
-  const bounds = useMemo(() => computeBounds(feats), [feats]);
+  // Les features viennent déjà du/ des GeoJSON(s) côté client via <Map />
+  const feats = useMemo<SiteFeature[]>(() => [], []);
 
   return (
-    <main style={{ padding: '24px 16px' }}>
-      <h1 style={{ fontSize: 28, fontWeight: 700, margin: '0 0 12px' }}>Sites d'Urbex</h1>
-
-      <Filters
-        features={allFeatures}
-        values={filters}
-        onChange={(next) => setFilters((prev) => ({ ...prev, ...next }))}
-      />
-
-      <Map features={feats} bounds={bounds} />
-
-      <div style={{ marginTop: 8, fontSize: 13, opacity: 0.8 }}>Résultats : {feats.length}</div>
+    <main style={{ padding: 16 }}>
+      <h1 style={{ marginTop: 0 }}>Sites d&apos;Urbex</h1>
+      <div style={{ marginBottom: 8 }}>
+        <Filters value={filters} onChange={setFilters} />
+      </div>
+      <ClientMap features={feats} filters={filters} />
     </main>
   );
 }
