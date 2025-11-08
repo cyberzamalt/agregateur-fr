@@ -1,82 +1,92 @@
-// apps/web/components/Filters.tsx
-'use client';
+"use client";
 
-import { useMemo } from 'react';
-import type { SiteFeature, SiteFilters } from '../lib/api';
-import { optionsFromFeatures } from '../lib/api';
+import { useMemo } from "react";
+import type { SiteFeature, SiteFilters } from "../lib/api";
+import { optionsFromFeatures } from "../lib/api";
 
-<Filters
-  features={feats}
-  values={filters}
-  onChange={(next) => setFilters((prev) => ({ ...prev, ...next }))}
-/>
+type Props = {
+  value: SiteFilters;
+  features: SiteFeature[];
+  onChange: (next: Partial<SiteFilters>) => void;
+};
 
-export default function Filters({ features, values, onChange }: Props) {
-  const { kinds, regions, departments, communes } = useMemo(
-    () => optionsFromFeatures(features, { region: values.region, department: values.department }),
-    [features, values.region, values.department]
-  );
+export default function Filters({ value, features, onChange }: Props) {
+  const opts = useMemo(() => {
+    return optionsFromFeatures(features, {
+      region: value.region,
+      department: value.department,
+    });
+  }, [features, value.region, value.department]);
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr 1fr 0.8fr', gap: 12, marginBottom: 12 }}>
+    <div style={{ display: "grid", gap: 8, gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr" }}>
+      {/* Recherche */}
       <input
-        placeholder="Recherche (nom / adresse)"
-        value={values.query}
-        onChange={(e) => onChange({ query: e.target.value })}
-        style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid #333', background: '#0c0c0c', color: '#eee' }}
+        placeholder="Recherche (nom, adresse, ville...)"
+        value={value.q}
+        onChange={(e) => onChange({ q: e.target.value })}
       />
 
+      {/* Type */}
       <select
-        value={values.kind}
-        onChange={(e) => onChange({ kind: e.target.value })}
-        style={selectStyle}
+        value={value.type}
+        onChange={(e) => onChange({ type: e.target.value as SiteFilters["type"] })}
       >
-        <option value="">Type (tous)</option>
-        {kinds.map(k => <option key={k} value={k}>{k}</option>)}
+        <option value="all">Tous types</option>
+        <option value="factory">Usine</option>
+        <option value="hospital">Hôpital</option>
+        <option value="military">Militaire</option>
+        <option value="mansion">Manoir</option>
+        <option value="rail">Rail</option>
+        <option value="other">Autre</option>
       </select>
 
+      {/* Région */}
       <select
-        value={values.region}
-        onChange={(e) => onChange({ region: e.target.value, department: '', commune: '' })}
-        style={selectStyle}
+        value={value.region}
+        onChange={(e) => onChange({ region: e.target.value, department: "all", commune: "all" })}
       >
-        <option value="">Région (toutes)</option>
-        {regions.map(r => <option key={r} value={r}>{r}</option>)}
+        <option value="all">Toutes régions</option>
+        {opts.regions.map((r) => (
+          <option key={r} value={r}>{r}</option>
+        ))}
       </select>
 
+      {/* Département */}
       <select
-        value={values.department}
-        onChange={(e) => onChange({ department: e.target.value, commune: '' })}
-        style={selectStyle}
+        value={value.department}
+        onChange={(e) => onChange({ department: e.target.value, commune: "all" })}
       >
-        <option value="">Department (tous)</option>
-        {departments.map(d => <option key={d} value={d}>{d}</option>)}
+        <option value="all">Tous départements</option>
+        {opts.departments.map((d) => (
+          <option key={d} value={d}>{d}</option>
+        ))}
       </select>
 
+      {/* Commune */}
       <select
-        value={values.commune}
+        value={value.commune}
         onChange={(e) => onChange({ commune: e.target.value })}
-        style={selectStyle}
       >
-        <option value="">Commune (toutes)</option>
-        {communes.map(c => <option key={c} value={c}>{c}</option>)}
+        <option value="all">Toutes communes</option>
+        {opts.communes.map((c) => (
+          <option key={c} value={c}>{c}</option>
+        ))}
       </select>
 
-      <select
-        value={String(values.minScore)}
-        onChange={(e) => onChange({ minScore: Number(e.target.value) })}
-        style={selectStyle}
-      >
-        {[0,1,2,3,4,5].map(s => <option key={s} value={s}>Score ≥ {s}</option>)}
-      </select>
+      {/* Score mini */}
+      <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 8 }}>
+        <label>Score min:</label>
+        <input
+          type="range"
+          min={0}
+          max={5}
+          step={0.5}
+          value={value.minScore}
+          onChange={(e) => onChange({ minScore: Number(e.target.value) })}
+        />
+        <strong>{value.minScore.toFixed(1)}</strong>
+      </div>
     </div>
   );
 }
-
-const selectStyle: React.CSSProperties = {
-  padding: '10px 12px',
-  borderRadius: 8,
-  border: '1px solid #333',
-  background: '#0c0c0c',
-  color: '#eee'
-};
