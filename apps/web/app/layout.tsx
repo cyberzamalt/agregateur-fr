@@ -1,25 +1,26 @@
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+// apps/web/app/layout.tsx
+import type { ReactNode } from "react";
+
+export const dynamic = "force-dynamic";
+// ⚠️ Ne PAS exporter `revalidate` ici
 
 export const metadata = {
   title: "Agrégateur FR — Urbex",
-  description: "Carte et liste de sites d'urbex (démo).",
+  description: "Carte et liste de sites d’urbex (démo).",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="fr">
-      <body
-        style={{
-          margin: 0,
-          fontFamily:
-            "-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
-          background: "#0b0c10",
-          color: "#f2f3f5",
-          lineHeight: 1.5,
-        }}
-        suppressHydrationWarning
-      >
+    <html lang="fr" suppressHydrationWarning>
+      <head>
+        {/* Leaflet CSS (si déjà importé en global.css, tu peux retirer) */}
+        <link
+          rel="stylesheet"
+          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
+      <body style={{ background: "#0b0b0e", color: "#fff", margin: 0 }}>
         {children}
       </body>
     </html>
