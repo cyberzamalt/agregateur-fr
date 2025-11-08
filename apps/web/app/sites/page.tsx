@@ -31,7 +31,10 @@ export default function SitesPage() {
     <main style={{ padding: 16 }}>
       <h1 style={{ marginTop: 0 }}>Sites d&apos;Urbex</h1>
       <div style={{ marginBottom: 8 }}>
-        <Filters value={filters} onChange={setFilters} />
+        <Filters
+  value={filters}
+  onChange={(next) => setFilters((prev) => ({ ...prev, ...next }))}
+/>
       </div>
       <ClientMap features={feats} filters={filters} />
     </main>
