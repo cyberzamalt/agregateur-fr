@@ -2,15 +2,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import dynamic from "next/dynamic";
+import nextDynamic from "next/dynamic"; // ⬅ alias pour éviter le conflit
 import Filters from "../../components/Filters";
 import type { SiteFilters, SiteFeature } from "../../lib/api";
 
-// Cette page est purement client (Leaflet + filtres)
+// Page 100% client (Leaflet + filtres)
 export const dynamic = "force-dynamic";
-export const revalidate = 0; // ✅ nombre ou false, jamais un objet
+export const revalidate = 0; // nombre ou false
 
-const ClientMap = dynamic(() => import("../../components/Map"), { ssr: false });
+const ClientMap = nextDynamic(() => import("../../components/Map"), {
+  ssr: false,
+});
 
 export default function SitesPage() {
   const [filters, setFilters] = useState<SiteFilters>({
@@ -22,7 +24,7 @@ export default function SitesPage() {
     minScore: 0,
   });
 
-  // Les features viennent déjà du/ des GeoJSON(s) côté client via <Map />
+  // Les features sont chargées côté client par <Map /> ; on laisse un tableau vide ici
   const feats = useMemo<SiteFeature[]>(() => [], []);
 
   return (
