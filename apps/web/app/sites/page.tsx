@@ -4,7 +4,7 @@
 import { useMemo, useState } from 'react';
 import nextDynamic from 'next/dynamic';
 import Filters from '../../components/Filters';
-import type { SiteFilters, SiteFeature } from '../../lib/api';
+import type { SiteFeature, SiteFilters } from '../../lib/api';
 
 // Page 100% client (Leaflet + filtres)
 export const dynamic = 'force-dynamic';
@@ -12,17 +12,19 @@ export const revalidate = 0;
 
 const ClientMap = nextDynamic(() => import('../../components/Map'), { ssr: false });
 
-export default function SitesPage() {
-  const [filters, setFilters] = useState<SiteFilters>({
-    q: '',
-    type: 'all',
-    region: 'all',
-    department: 'all',
-    commune: 'all',
-    minScore: 0,
-  });
+const DEFAULT_FILTERS: SiteFilters = {
+  q: '',
+  type: 'all',
+  region: 'all',
+  department: 'all',
+  commune: 'all',
+  minScore: 0,
+};
 
-  // La carte charge les features côté client; on passe une liste vide ici
+export default function SitesPage() {
+  const [filters, setFilters] = useState<SiteFilters>(DEFAULT_FILTERS);
+
+  // La carte chargera réellement les features côté client ; on passe une liste vide ici
   const feats = useMemo<SiteFeature[]>(() => [], []);
 
   return (
@@ -33,7 +35,7 @@ export default function SitesPage() {
         <Filters
           features={feats}
           values={filters}
-          onChange={(next) => setFilters(prev => ({ ...prev, ...next }))}
+          onChange={(next) => setFilters((prev) => ({ ...prev, ...next }))}
         />
       </div>
 
