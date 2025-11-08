@@ -10,7 +10,7 @@ export default function SiteCard({ f }: { f: SiteFeature }) {
       {p.kind && <div style={{ opacity: 0.8, fontSize: 13 }}>{p.kind}</div>}
       {p.address && <div style={{ opacity: 0.8, fontSize: 13 }}>📍 {p.address}</div>}
       <div style={{ opacity: 0.8, fontSize: 13 }}>
-        {p.commune ? `${p.commune}, ` : ''}{p.departement ? `${p.departement}, ` : ''}{p.region ?? ''}
+        {p.commune ? `${p.commune}, ` : ''}{p.department ? `${p.department}, ` : ''}{p.region ?? ''}
       </div>
       {typeof p.score === 'number' && (
         <div style={{ marginTop: 6 }}>
