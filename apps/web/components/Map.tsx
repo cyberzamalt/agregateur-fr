@@ -1,108 +1,70 @@
-"use client";
+// apps/web/components/Map.tsx
+'use client';
 
-import React, { useEffect, useMemo } from "react";
-import {
-  MapContainer as RLMapContainer,
-  TileLayer as RLTileLayer,
-  Marker as RLMarker,
-  Popup as RLPopup,
-  LayersControl as RLLayersControl,
-  ScaleControl as RLScaleControl,
-  useMap,
-} from "react-leaflet";
-import "leaflet/dist/leaflet.css";
-import L from "leaflet";
-import type { BoundsTuple, SiteFeature } from "../lib/api";
+import { useMemo } from 'react';
+import { MapContainer as RLMapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+import type { SiteFeature, SiteFilters, BoundsTuple } from '../lib/api';
 
-// Icône Leaflet par défaut (CDN)
-const markerIcon = new L.Icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+const pin = new L.Icon({
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
   iconSize: [25, 41],
   iconAnchor: [12, 41],
-  shadowSize: [41, 41],
 });
-
-// Casts pour éviter les soucis de d.ts selon versions
-const MapContainer: any = RLMapContainer as any;
-const TileLayer: any = RLTileLayer as any;
-const Marker: any = RLMarker as any;
-const Popup: any = RLPopup as any;
-const LayersControl: any = RLLayersControl as any;
-const ScaleControl: any = RLScaleControl as any;
 
 type Props = {
   features: SiteFeature[];
-  bounds?: BoundsTuple;
+  filters: SiteFilters;
 };
 
-function FitBoundsHelper({ bounds }: { bounds?: BoundsTuple }) {
-  const map = useMap();
-  useEffect(() => {
-    if (bounds) {
-      map.fitBounds(bounds as any, { padding: [24, 24] });
-    }
-  }, [bounds, map]);
-  return null;
+const FRANCE_BOUNDS: BoundsTuple = [[41.2, -5.5], [51.3, 9.6]];
+
+function match(f: SiteFeature, flt: SiteFilters) {
+  if (flt.q) {
+    const hay = `${f.name} ${f.address ?? ''} ${f.commune ?? ''} ${f.department ?? ''} ${f.region ?? ''}`.toLowerCase();
+    if (!hay.includes(flt.q.toLowerCase())) return false;
+  }
+  if (flt.type        !== 'all' && f.type        !== flt.type) return false;
+  if (flt.region      !== 'all' && f.region      !== flt.region) return false;
+  if (flt.department  !== 'all' && f.department  !== flt.department) return false;
+  if (flt.commune     !== 'all' && f.commune     !== flt.commune) return false;
+  if (typeof f.score === 'number' && f.score < flt.minScore) return false;
+  return true;
 }
 
-export default function Map({ features, bounds }: Props) {
-  const center = useMemo<[number, number]>(() => {
-    if (!features.length) return [46.5, 2.5]; // centre FR
-    let lat = 0,
-      lon = 0;
-    for (const f of features) {
-      const [x, y] = f.geometry.coordinates; // [lon, lat]
-      lon += x;
-      lat += y;
-    }
-    return [lat / features.length, lon / features.length];
-  }, [features]);
+export default function Map({ features, filters }: Props) {
+  const items = useMemo(() => features.filter(f => match(f, filters)), [features, filters]);
+
+  // Bounds auto sur les points filtrés
+  const bounds: BoundsTuple | undefined = useMemo(() => {
+    if (!items.length) return FRANCE_BOUNDS;
+    const latLngs = items.map(f => [f.lat, f.lon] as [number, number]);
+    const b = L.latLngBounds(latLngs);
+    return [[b.getSouthWest().lat, b.getSouthWest().lng], [b.getNorthEast().lat, b.getNorthEast().lng]];
+  }, [items]);
 
   return (
-    <div style={{ width: "100%", maxWidth: 900, margin: "0 auto" }}>
-      <div style={{ width: "100%", height: 420, borderRadius: 12, overflow: "hidden", border: "1px solid #333" }}>
-        <MapContainer center={center} zoom={6} style={{ width: "100%", height: "100%" }}>
-          <FitBoundsHelper bounds={bounds} />
-          <ScaleControl position="bottomleft" />
-
-          <LayersControl position="topright">
-            <LayersControl.BaseLayer checked name="Standard (OSM)">
-              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
-            </LayersControl.BaseLayer>
-
-            <LayersControl.BaseLayer name="Relief (OpenTopoMap)">
-              <TileLayer
-                url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
-                attribution="&copy; OpenTopoMap, &copy; OpenStreetMap"
-              />
-            </LayersControl.BaseLayer>
-
-            <LayersControl.BaseLayer name="Satellite (Esri)">
-              <TileLayer
-                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                attribution="Tiles &copy; Esri"
-              />
-            </LayersControl.BaseLayer>
-          </LayersControl>
-
-          {features.map((f) => {
-            const [lon, lat] = f.geometry.coordinates;
-            return (
-              <Marker key={f.properties.id} position={[lat, lon]} icon={markerIcon}>
-                <Popup>
-                  <strong>{f.properties.name}</strong>
-                  {f.properties.kind && <div>{f.properties.kind}</div>}
-                  {f.properties.address && <div style={{ opacity: 0.8 }}>{f.properties.address}</div>}
-                  {typeof f.properties.score === "number" && <div>Score : {f.properties.score.toFixed(1)}</div>}
-                </Popup>
-              </Marker>
-            );
-          })}
-        </MapContainer>
-      </div>
-      <div style={{ marginTop: 8, fontSize: 13, opacity: 0.8 }}>Résultats : {features.length}</div>
-    </div>
+    <RLMapContainer
+      style={{ height: 420, width: 720, borderRadius: 8 }}
+      bounds={bounds as any}
+      scrollWheelZoom={true}
+    >
+      <TileLayer
+        attribution="&copy; OpenStreetMap contributors"
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+      {items.map(pt => (
+        <Marker key={pt.id} position={[pt.lat, pt.lon]} icon={pin}>
+          <Popup>
+            <strong>{pt.name}</strong><br />
+            {pt.address ?? ''}<br />
+            {[pt.commune, pt.department, pt.region].filter(Boolean).join(', ')}
+            {typeof pt.score === 'number' ? <div>Score: {pt.score}</div> : null}
+          </Popup>
+        </Marker>
+      ))}
+    </RLMapContainer>
   );
 }
