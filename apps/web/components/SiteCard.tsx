@@ -1,20 +1,23 @@
-// apps/web/components/SiteCard.tsx
-import type { SiteFeature } from '../lib/api';
-import RatingStars from './RatingStars';
+"use client";
 
-export default function SiteCard({ f }: { f: SiteFeature }) {
-  const p = f.properties || {};
+import type { SiteFeature } from "../lib/api";
+import RatingStars from "./RatingStars";
+
+export default function SiteCard({ feature }: { feature: SiteFeature }) {
+  const p = feature.properties;
+
   return (
-    <div style={{ border: '1px solid #333', borderRadius: 10, padding: 10, background: '#121214' }}>
+    <div style={{ padding: 12, border: "1px solid #333", borderRadius: 10 }}>
       <div style={{ fontWeight: 700 }}>{p.name}</div>
-      {p.kind && <div style={{ opacity: 0.8, fontSize: 13 }}>{p.kind}</div>}
       {p.address && <div style={{ opacity: 0.8, fontSize: 13 }}>📍 {p.address}</div>}
       <div style={{ opacity: 0.8, fontSize: 13 }}>
-        {p.commune ? `${p.commune}, ` : ''}{p.department ? `${p.department}, ` : ''}{p.region ?? ''}
+        {p.commune ? `${p.commune}, ` : ""}
+        {p.department ? `${p.department}, ` : ""}
+        {p.region ?? ""}
       </div>
-      {typeof p.score === 'number' && (
+      {typeof p.score === "number" && (
         <div style={{ marginTop: 6 }}>
-          <RatingStars value={p.score} /> <span style={{ opacity: 0.7, fontSize: 12 }}>({p.score.toFixed(1)})</span>
+          <RatingStars value={p.score} />
         </div>
       )}
     </div>
