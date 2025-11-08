@@ -49,7 +49,7 @@ export default function Filters({ features, values, onChange }: Props) {
         onChange={(e) => onChange({ department: e.target.value, commune: '' })}
         style={selectStyle}
       >
-        <option value="">Département (tous)</option>
+        <option value="">Department (tous)</option>
         {departments.map(d => <option key={d} value={d}>{d}</option>)}
       </select>
 
