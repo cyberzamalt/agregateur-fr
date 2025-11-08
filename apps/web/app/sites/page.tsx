@@ -1,6 +1,3 @@
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
 // apps/web/app/sites/page.tsx
 'use client';
 
