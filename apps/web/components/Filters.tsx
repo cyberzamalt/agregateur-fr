@@ -5,11 +5,11 @@ import { useMemo } from 'react';
 import type { SiteFeature, SiteFilters } from '../lib/api';
 import { optionsFromFeatures } from '../lib/api';
 
-type Props = {
-  features: SiteFeature[];
-  values: SiteFilters;
-  onChange: (next: Partial<SiteFilters>) => void;
-};
+<Filters
+  features={feats}
+  values={filters}
+  onChange={(next) => setFilters((prev) => ({ ...prev, ...next }))}
+/>
 
 export default function Filters({ features, values, onChange }: Props) {
   const { kinds, regions, departments, communes } = useMemo(
