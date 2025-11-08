@@ -1,148 +1,101 @@
 // apps/web/lib/api.ts
-// Types, helpers de filtrage + calcul de bounds pour Leaflet
 
-export type SiteProps = {
-  id: string;
+/** ---------- Types ---------- */
+
+export type SiteProperties = {
   name: string;
-  kind?: string;          // ex: "friche industrielle", "bunker", etc.
-  region?: string;        // ex: "Île-de-France"
-  department?: string;    // ex: "Paris"
-  commune?: string;       // ex: "Paris 13e"
-  score?: number;         // 0..5
-  address?: string;       // texte libre
+  address?: string;
+
+  // Catégorie libre (ex: "friche_industrielle", "chateau", ...)
+  type?: string;
+
+  // Métadonnées admin (tolérance sur l’orthographe)
+  region?: string;
+  department?: string;       // clé standard
+  departement?: string;      // tolérance (au cas où dans les GeoJSON)
+  commune?: string;
+
+  score?: number;            // 0..5
 };
 
-export type SiteFeature = {
+export type Feature = {
   type: 'Feature';
   geometry: { type: 'Point'; coordinates: [number, number] }; // [lon, lat]
-  properties: SiteProps;
+  properties: SiteProperties;
 };
 
-export type FeatureCollection = { type: 'FeatureCollection'; features: SiteFeature[] };
+export type SiteFeature = Feature;
 
-// Alias pour compat avec certains imports existants éventuels
-export type Feature = SiteFeature;
-
+/** Filtres utilisés partout dans l’app */
 export type SiteFilters = {
-  query: string;
-  kind: string;        // "" = tous
-  region: string;      // "" = toutes
-  department: string;  // "" = tous
-  commune: string;     // "" = toutes
-  minScore: number;    // 0..5
+  q: string;                       // 🔎 texte de recherche (nom/adresse/ville…)
+  type: 'all' | string;            // 'all' ou la valeur exacte de properties.type
+  region: 'all' | string;
+  department: 'all' | string;
+  commune: 'all' | string;
+  minScore: number;                // score minimal
 };
 
 export const defaultFilters: SiteFilters = {
-  query: '',
-  kind: '',
-  region: '',
-  department: '',
-  commune: '',
+  q: '',
+  type: 'all',
+  region: 'all',
+  department: 'all',
+  commune: 'all',
   minScore: 0,
 };
 
-export function fromAnyGeojson(input: any): SiteFeature[] {
-  if (!input) return [];
-  if (Array.isArray(input)) return (input as any[]).filter(isSiteFeature) as SiteFeature[];
-  if (typeof input === 'object' && input.type === 'FeatureCollection' && Array.isArray(input.features)) {
-    return (input.features as any[]).filter(isSiteFeature) as SiteFeature[];
+/** ---------- Utils ---------- */
+
+/** Normalisation accent/majuscules/espaces pour les recherches */
+export function normalize(s: string): string {
+  return (s ?? '')
+    .toString()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .trim();
+}
+
+/** Récupère region/département/commune avec tolérance sur les clés */
+export function getAdmin(p: SiteProperties) {
+  const region = (p.region ?? '').toString();
+  const department = (p.department ?? (p as any).departement ?? '').toString();
+  const commune = (p.commune ?? '').toString();
+  return { region, department, commune };
+}
+
+/** Teste si une feature matche les filtres */
+export function matchFeature(f: SiteFeature, filters: SiteFilters): boolean {
+  const p = f.properties ?? {};
+  const { region, department, commune } = getAdmin(p);
+
+  // Texte (nom, adresse, commune, département, région)
+  if (filters.q) {
+    const haystack = normalize(
+      [p.name, p.address, commune, department, region].filter(Boolean).join(' ')
+    );
+    if (!haystack.includes(normalize(filters.q))) return false;
   }
-  return [];
-}
 
-function isSiteFeature(f: any): f is SiteFeature {
-  return (
-    f &&
-    f.type === 'Feature' &&
-    f.geometry &&
-    f.geometry.type === 'Point' &&
-    Array.isArray(f.geometry.coordinates) &&
-    typeof f.geometry.coordinates[0] === 'number' &&
-    typeof f.geometry.coordinates[1] === 'number' &&
-    f.properties &&
-    typeof f.properties.name === 'string'
-  );
-}
+  // Type
+  if (filters.type !== 'all' && p.type !== filters.type) return false;
 
-export function uniqueSorted(values: (string | undefined)[]): string[] {
-  const set = new Set(values.filter(Boolean) as string[]);
-  return Array.from(set).sort((a, b) => a.localeCompare(b, 'fr'));
-}
+  // Région / Département / Commune
+  if (filters.region !== 'all' && region !== filters.region) return false;
+  if (filters.department !== 'all' && department !== filters.department) return false;
+  if (filters.commune !== 'all' && commune !== filters.commune) return false;
 
-export function optionsFromFeatures(
-  features: SiteFeature[],
-  scope: Partial<Pick<SiteFilters, 'region' | 'department'>>
-) {
-  const byRegion = features;
-  const byDept = scope.region
-    ? features.filter(f => (f.properties.region || '') === scope.region)
-    : features;
-
-  const byCommune = scope.region || scope.department
-    ? features.filter(f =>
-        (scope.region ? (f.properties.region || '') === scope.region : true) &&
-        (scope.department ? (f.properties.department || '') === scope.department : true)
-      )
-    : features;
-
-  const kinds = uniqueSorted(features.map(f => f.properties.kind));
-  const regions = uniqueSorted(byRegion.map(f => f.properties.region));
-  const departments = uniqueSorted(byDept.map(f => f.properties.department));
-  const communes = uniqueSorted(byCommune.map(f => f.properties.commune));
-
-  return { kinds, regions, departments, communes };
-}
-
-export function applyFilters(all: SiteFeature[], filters: SiteFilters): SiteFeature[] {
-  const q = filters.query.trim().toLowerCase();
-
-  return all.filter(f => {
-    const p = f.properties || ({} as SiteProps);
-    const [lon, lat] = f.geometry.coordinates;
-
-    if (Number.isNaN(lon) || Number.isNaN(lat)) return false;
-
-    if (filters.kind && (p.kind || '') !== filters.kind) return false;
-    if (filters.region && (p.region || '') !== filters.region) return false;
-    if (filters.department && (p.department || '') !== filters.department) return false;
-    if (filters.commune && (p.commune || '') !== filters.commune) return false;
-
-    const score = typeof p.score === 'number' ? p.score : 0;
-    if (score < filters.minScore) return false;
-
-    if (q) {
-      const hay = [
-        p.name,
-        p.kind,
-        p.region,
-        p.department,
-        p.commune,
-        p.address,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-
-      if (!hay.includes(q)) return false;
-    }
-
-    return true;
-  });
-}
-
-export type LatLngTuple = [number, number];
-export type BoundsTuple = [LatLngTuple, LatLngTuple]; // [[southWestLat, southWestLng], [northEastLat, northEastLng]]
-
-export function computeBounds(features: SiteFeature[]): BoundsTuple | undefined {
-  if (!features.length) return undefined;
-
-  let minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
-  for (const f of features) {
-    const [lon, lat] = f.geometry.coordinates;
-    if (lat < minLat) minLat = lat;
-    if (lat > maxLat) maxLat = lat;
-    if (lon < minLon) minLon = lon;
-    if (lon > maxLon) maxLon = lon;
+  // Score minimal
+  if (typeof filters.minScore === 'number') {
+    const s = typeof p.score === 'number' ? p.score : -Infinity;
+    if (s < filters.minScore) return false;
   }
-  return [[minLat, minLon], [maxLat, maxLon]];
+
+  return true;
+}
+
+/** Filtre un tableau de features */
+export function filterFeatures(all: SiteFeature[], filters: SiteFilters): SiteFeature[] {
+  return all.filter((f) => matchFeature(f, filters));
 }
