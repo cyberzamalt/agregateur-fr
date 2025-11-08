@@ -1,11 +1,19 @@
+// apps/web/app/page.tsx
+import Link from "next/link";
+
+export const dynamic = "force-dynamic";
+// ⚠️ Ne PAS exporter `revalidate` ici
+
 export default function Home() {
   return (
-    <main style={{ padding: "24px 16px" }}>
-      <h1 style={{ fontSize: 28, fontWeight: 700, margin: "0 0 12px" }}>
-        Agrégateur FR
-      </h1>
-      <p>Bienvenue. Accédez à la carte des sites&nbsp;:</p>
-      <p><a href="/sites">👉 Ouvrir /sites</a></p>
+    <main style={{ padding: 24 }}>
+      <h1 style={{ marginTop: 0 }}>Agrégateur FR</h1>
+      <p>Bienvenue. Accédez à la carte des sites :</p>
+      <p>
+        <Link href="/sites" style={{ color: "#7cc7ff", textDecoration: "underline" }}>
+          Ouvrir /sites
+        </Link>
+      </p>
     </main>
   );
 }
