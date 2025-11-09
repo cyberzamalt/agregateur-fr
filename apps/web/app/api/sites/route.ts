@@ -1,8 +1,10 @@
+// apps/web/app/api/sites/route.ts
 // Next.js App Route – filtre les sites depuis /public/sites.geojson
 import { NextResponse } from "next/server";
 import path from "node:path";
 import fs from "node:fs/promises";
 
+export const runtime = "nodejs";       // ⬅️ important si on utilise fs en prod
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -51,6 +53,7 @@ export async function GET(req: Request) {
     const bboxStr = url.searchParams.get("bbox"); // "minLon,minLat,maxLon,maxLat"
     const wantFC = (url.searchParams.get("fc") || "0") === "1"; // renvoyer un FeatureCollection complet ?
 
+    // Chemin correct en prod chez Render (process.cwd() == .../apps/web)
     const filePath = path.join(process.cwd(), "public", "sites.geojson");
     const raw = await fs.readFile(filePath, "utf-8");
     const json = JSON.parse(raw);
