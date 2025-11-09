@@ -4,7 +4,7 @@
 import { useMemo } from 'react';
 import {
   MapContainer as RLMapContainer,
-  TileLayer,
+  TileLayer as RLTileLayer,
   Marker,
   Popup,
 } from 'react-leaflet';
@@ -12,15 +12,9 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import type { SiteFeature, SiteFilters, BoundsTuple } from '../lib/api';
 
-// On caste pour éviter les soucis de typings cross-versions
-const MapContainer: any = RLMapContainer as any;
-
-const pin = new L.Icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-});
+// On neutralise les typings stricts des props (versions qui diffèrent)
+const MapContainerAny = RLMapContainer as unknown as React.ComponentType<any>;
+const TileLayerAny = RLTileLayer as unknown as React.ComponentType<any>;
 
 type Props = { features: SiteFeature[]; filters: SiteFilters };
 
@@ -39,6 +33,13 @@ function match(f: SiteFeature, flt: SiteFilters) {
   return true;
 }
 
+const pin = new L.Icon({
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
+
 export default function Map({ features, filters }: Props) {
   const items = useMemo(() => features.filter((f) => match(f, filters)), [features, filters]);
 
@@ -53,13 +54,14 @@ export default function Map({ features, filters }: Props) {
   }, [items]);
 
   return (
-    <MapContainer
+    <MapContainerAny
       style={{ height: 420, width: '100%', maxWidth: 980, borderRadius: 8 }}
       bounds={bounds as any}
-      // scrollWheelZoom: true par défaut ; on évite la prop non typée
+      // pas de scrollWheelZoom ici (certaines d.ts ne l’acceptent pas)
     >
-      <TileLayer
-        attribution="&copy; OpenStreetMap contributors"
+      <TileLayerAny
+        // certaines d.ts ne typent pas `attribution`, on passe aussi en <any>
+        attribution="© OpenStreetMap contributors"
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       {items.map((pt) => (
@@ -74,6 +76,6 @@ export default function Map({ features, filters }: Props) {
           </Popup>
         </Marker>
       ))}
-    </MapContainer>
+    </MapContainerAny>
   );
 }
