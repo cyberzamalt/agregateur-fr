@@ -19,7 +19,7 @@ export default function SitesPage() {
     minScore: 0,
   });
 
-  // Les features initiales sont vides : la map charge ses données côté client
+  // La liste est vide ici ; la Map charge ses données côté client
   const feats = useMemo<SiteFeature[]>(() => [], []);
 
   return (
@@ -28,15 +28,12 @@ export default function SitesPage() {
 
       <div style={{ marginBottom: 8 }}>
         <Filters
-          value={filters}
+          features={feats}
+          values={filters}
           onChange={(next: Partial<SiteFilters>) =>
             setFilters((prev) => ({ ...prev, ...next }))
           }
         />
-      </div>
-
-      <div id="debug-sites" style={{ fontSize: 12, opacity: 0.6 }}>
-        OK /sites rendu (client)
       </div>
 
       <ClientMap features={feats} filters={filters} />
