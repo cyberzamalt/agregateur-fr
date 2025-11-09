@@ -1,30 +1,25 @@
 // apps/web/app/sites/page.tsx
-'use client';
+"use client";
 
-import { useMemo, useState } from 'react';
-import nextDynamic from 'next/dynamic';
-import Filters from '../../components/Filters';
-import type { SiteFeature, SiteFilters } from '../../lib/api';
+import { useMemo, useState } from "react";
+import nextDynamic from "next/dynamic";
+import Filters from "../../components/Filters";
+import type { SiteFilters, SiteFeature } from "../../lib/api";
 
-// Page 100% client (Leaflet + filtres)
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
-const ClientMap = nextDynamic(() => import('../../components/Map'), { ssr: false });
-
-const DEFAULT_FILTERS: SiteFilters = {
-  q: '',
-  type: 'all',
-  region: 'all',
-  department: 'all',
-  commune: 'all',
-  minScore: 0,
-};
+// Map uniquement côté client
+const ClientMap = nextDynamic(() => import("../../components/Map"), { ssr: false });
 
 export default function SitesPage() {
-  const [filters, setFilters] = useState<SiteFilters>(DEFAULT_FILTERS);
+  const [filters, setFilters] = useState<SiteFilters>({
+    q: "",
+    type: "all",
+    region: "all",
+    department: "all",
+    commune: "all",
+    minScore: 0,
+  });
 
-  // La carte chargera réellement les features côté client ; on passe une liste vide ici
+  // Les features initiales sont vides : la map charge ses données côté client
   const feats = useMemo<SiteFeature[]>(() => [], []);
 
   return (
@@ -33,10 +28,15 @@ export default function SitesPage() {
 
       <div style={{ marginBottom: 8 }}>
         <Filters
-          features={feats}
-          values={filters}
-          onChange={(next) => setFilters((prev) => ({ ...prev, ...next }))}
+          value={filters}
+          onChange={(next: Partial<SiteFilters>) =>
+            setFilters((prev) => ({ ...prev, ...next }))
+          }
         />
+      </div>
+
+      <div id="debug-sites" style={{ fontSize: 12, opacity: 0.6 }}>
+        OK /sites rendu (client)
       </div>
 
       <ClientMap features={feats} filters={filters} />
