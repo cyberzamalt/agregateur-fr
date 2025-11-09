@@ -6,21 +6,22 @@ import nextDynamic from "next/dynamic";
 import Filters from "../../components/Filters";
 import type { SiteFeature, SiteFilters } from "../../lib/api";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0 as 0;
+// ⚠️ Pas de export const revalidate / dynamic ici.
+// La page est 100% client et la Map se charge côté client.
 
 const ClientMap = nextDynamic(() => import("../../components/Map"), { ssr: false });
 
 export default function SitesPage() {
   const [filters, setFilters] = useState<SiteFilters>({
     q: "",
-    type: "all",
+    kind: "all",        // <-- bien "kind" (pas "type")
     region: "all",
     department: "all",
     commune: "all",
     minScore: 0,
   });
 
+  // on ne précharge rien côté page : la carte fetch elle-même
   const feats = useMemo<SiteFeature[]>(() => [], []);
 
   return (
@@ -30,7 +31,7 @@ export default function SitesPage() {
         <Filters
           values={filters}
           onChange={(next: Partial<SiteFilters>) =>
-            setFilters((prev) => ({ ...prev, ...next }))
+            setFilters(prev => ({ ...prev, ...next }))
           }
         />
       </div>
