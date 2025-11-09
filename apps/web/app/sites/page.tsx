@@ -25,10 +25,10 @@ export default function SitesPage() {
   const [features, setFeatures] = useState<SiteFeature[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // recharge les données quand les filtres changent
+  // Recharge les points quand les filtres changent
   useEffect(() => {
     const ctrl = new AbortController();
-    const run = async () => {
+    (async () => {
       setLoading(true);
       try {
         const u = new URL("/api/sites", window.location.origin);
@@ -42,15 +42,16 @@ export default function SitesPage() {
 
         const res = await fetch(u.toString(), { signal: ctrl.signal, cache: "no-store" });
         const data = await res.json();
-        const feats: SiteFeature[] = Array.isArray(data?.features) ? data.features : (Array.isArray(data) ? data : []);
+        const feats: SiteFeature[] = Array.isArray(data?.features)
+          ? data.features
+          : Array.isArray(data) ? data : [];
         setFeatures(feats);
       } catch {
         setFeatures([]);
       } finally {
         setLoading(false);
       }
-    };
-    run();
+    })();
     return () => ctrl.abort();
   }, [filters]);
 
@@ -60,7 +61,10 @@ export default function SitesPage() {
     <main style={{ padding: 16 }}>
       <h1 style={{ marginTop: 0 }}>Sites d&apos;Urbex</h1>
       <div style={{ marginBottom: 8 }}>
-        <Filters values={filters} onChange={(next) => setFilters((prev) => ({ ...prev, ...next }))} />
+        <Filters
+          values={filters}
+          onChange={(next) => setFilters((prev) => ({ ...prev, ...next }))}
+        />
       </div>
       {loading && <div style={{ color: "#aaa", marginBottom: 8 }}>Chargement…</div>}
       <ClientMap features={feats} filters={filters} />
