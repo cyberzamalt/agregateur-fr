@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import path from "node:path";
 import fs from "node:fs/promises";
 
-export const runtime = "nodejs";       // ⬅️ important si on utilise fs en prod
+export const runtime = "nodejs";       // important si on utilise fs en prod (Render)
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -13,12 +13,14 @@ type SiteProps = {
   name: string;
   kind?: string;
   region?: string;
-  department?: string;
+  department?: string;    // parfois absent dans le geojson
+  departement?: string;   // alias FR courant dans le geojson
   commune?: string;
   score?: number;
-  address?: string; // si le snapshot l’a
+  address?: string;
   [k: string]: any;
 };
+
 type Feature = {
   type: "Feature";
   geometry: { type: "Point"; coordinates: [number, number] }; // [lon, lat]
@@ -47,11 +49,11 @@ export async function GET(req: Request) {
     const q = (url.searchParams.get("q") || "").trim().toLowerCase();
     const kind = (url.searchParams.get("kind") || "").trim().toLowerCase();
     const region = (url.searchParams.get("region") || "").trim().toLowerCase();
-    const department = (url.searchParams.get("department") || "").trim().toLowerCase();
+    const department = (url.searchParams.get("department") || "").trim().toLowerCase(); // param côté UI
     const commune = (url.searchParams.get("commune") || "").trim().toLowerCase();
     const scoreMin = Number(url.searchParams.get("scoreMin") || "0");
     const bboxStr = url.searchParams.get("bbox"); // "minLon,minLat,maxLon,maxLat"
-    const wantFC = (url.searchParams.get("fc") || "0") === "1"; // renvoyer un FeatureCollection complet ?
+    const wantFC = (url.searchParams.get("fc") || "0") === "1"; // renvoyer FeatureCollection ?
 
     // Chemin correct en prod chez Render (process.cwd() == .../apps/web)
     const filePath = path.join(process.cwd(), "public", "sites.geojson");
@@ -70,7 +72,11 @@ export async function GET(req: Request) {
       }
       if (kind && (p.kind || "").toLowerCase() !== kind) return false;
       if (region && (p.region || "").toLowerCase() !== region) return false;
-      if (department && (p.department || "").toLowerCase() !== department) return false;
+
+      // ✅ alias department/departement (FR)
+      const depRaw = (p.department ?? p.departement ?? "").toString().trim().toLowerCase();
+      if (department && depRaw !== department) return false;
+
       if (commune && (p.commune || "").toLowerCase() !== commune) return false;
       if (!Number.isNaN(scoreMin) && typeof p.score === "number" && p.score < scoreMin) return false;
 
@@ -83,20 +89,21 @@ export async function GET(req: Request) {
       return true;
     });
 
-    // meta simple si demandé
+    // ✅ meta avec alias pour departments
     if (url.searchParams.get("meta") === "1") {
       const regions = new Set<string>(), deps = new Set<string>(), comms = new Set<string>(), kinds = new Set<string>();
       for (const f of all) {
         const p = f.properties || ({} as SiteProps);
         if (p.region) regions.add(p.region);
-        if (p.department) deps.add(p.department);
+        const deptMeta = p.department ?? p.departement;
+        if (deptMeta) deps.add(deptMeta);
         if (p.commune) comms.add(p.commune);
         if (p.kind) kinds.add(p.kind);
       }
       return NextResponse.json({
         count: all.length,
         regions: Array.from(regions).sort(),
-        departments: Array.from(deps).sort(),
+        departments: Array.from(deps).sort(),        // ← rempli maintenant
         communes: Array.from(comms).sort(),
         kinds: Array.from(kinds).sort(),
         updatedAt: new Date().toISOString(),
